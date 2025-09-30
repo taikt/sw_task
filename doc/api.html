@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SW Task API Reference Tables</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            margin: 20px;
+            background-color: #ffffff;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+        }
+        
+        .header {
+            text-align: center;
+            padding: 20px 0;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 2.2em;
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+        
+        .table-section {
+            margin-bottom: 50px;
+        }
+        
+        .table-title {
+            font-size: 1.0em;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+        
+        .table-container {
+            overflow-x: auto;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0;
+            border: 1px solid #d1d5db;
+        }
+        
+        th {
+            background-color: #f3f4f6;
+            color: #374151;
+            padding: 12px 16px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 14px;
+            border: 1px solid #d1d5db;
+        }
+        
+        td {
+            padding: 12px 16px;
+            border: 1px solid #d1d5db;
+            vertical-align: top;
+            font-size: 14px;
+            line-height: 1.5;
+            background-color: #ffffff;
+        }
+        
+        .category {
+            font-weight: 600;
+            color: #374151;
+            background-color: #ffffff !important;
+            text-align: center;
+            vertical-align: middle;
+        }
+        
+        .api-name {
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+            font-weight: 800;
+            color: #1e40af;
+            font-size: 13px;
+        }
+        
+        .description {
+            color: #4b5563;
+            line-height: 1.6;
+        }
+        
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8em;
+            }
+            
+            th, td {
+                padding: 8px 12px;
+                font-size: 13px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>SW Task Event Loop - API Reference Tables</h1>
+        </div>
+        
+        <!-- Table 1: Function Posting & Promise -->
+        <div class="table-section">
+            <h2 class="table-title">Function Posting & Promise APIs</h2>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 20%;">Category</th>
+                            <th style="width: 35%;">API Name</th>
+                            <th style="width: 45%;">Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="category" rowspan="3">Function Posting</td>
+                            <td class="api-name">post(func, args...)</td>
+                            <td class="description">Post normal/light task to run inside event loop thread, return std::future for async result</td>
+                        </tr>
+                        <tr>
+                            <td class="api-name">postDelayed(delayMs, func, args...)</td>
+                            <td class="description">Post light task to run inside event loop thread after delay (milliseconds), return std::future</td>
+                        </tr>
+                        <tr>
+                            <td class="api-name">postWithTimeout(func, timeout_ms)</td>
+                            <td class="description">Post light task to run inside event loop thread with timeout, return Timer to cancel if needed</td>
+                        </tr>
+                        
+                        <tr>
+                            <td class="category" rowspan="6">Promise</td>
+                            <td class="api-name">createPromise&lt;T&gt;()</td>
+                            <td class="description">Create Promise object for manual resolve/reject later</td>
+                        </tr>
+                        <tr>
+                            <td class="api-name">postWork(func)</td>
+                            <td class="description">Execute heavy CPU-bound task on separate background thread, not in event loop, return Promise with result</td>
+                        </tr>
+                        <tr>
+                            <td class="api-name">postWork(func, timeout)</td>
+                            <td class="description">Execute heavy CPU-bound task on separate background thread with timeout, cancel if exceeds time limit</td>
+                        </tr>
+                        <tr>
+                            <td class="api-name">Promise::set_value(value)</td>
+                            <td class="description">Resolve promise with value (fulfill the promise)</td>
+                        </tr>
+                        <tr>
+                            <td class="api-name">Promise::then(callback)</td>
+                            <td class="description">Chain callback to run when promise resolves successfully</td>
+                        </tr>
+                        <tr>
+                            <td class="api-name">Promise::catchError(callback)</td>
+                            <td class="description">Chain error handler to run when promise rejects</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Table 2: Timer & Timer Control -->
+        <div class="table-section">
+            <h2 class="table-title">Timer & Timer Control APIs</h2>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 20%;">Category</th>
+                            <th style="width: 35%;">API Name</th>
+                            <th style="width: 45%;">Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="category" rowspan="4">Timer</td>
+                            <td class="api-name">addTimer(callback, delay)</td>
+                            <td class="description">Create one-shot timer, run callback once after delay</td>
+                        </tr>
+                        <tr>
+                            <td class="api-name">addTimer(callback, duration)</td>
+                            <td class="description">Create one-shot timer with chrono duration (modern C++)</td>
+                        </tr>
+                        <tr>
+                            <td class="api-name">addPeriodicTimer(callback, interval)</td>
+                            <td class="description">Create periodic timer, run callback repeatedly every interval</td>
+                        </tr>
+                        <tr>
+                            <td class="api-name">addPeriodicTimer(callback, duration)</td>
+                            <td class="description">Create periodic timer with chrono duration</td>
+                        </tr>
+                        
+                        <tr>
+                            <td class="category" rowspan="5">Timer Control</td>
+                            <td class="api-name">Timer::cancel()</td>
+                            <td class="description">Cancel timer, callback will not run anymore</td>
+                        </tr>
+                        <tr>
+                            <td class="api-name">Timer::isActive()</td>
+                            <td class="description">Check if timer is still active/running</td>
+                        </tr>
+                        <tr>
+                            <td class="api-name">Timer::getId()</td>
+                            <td class="description">Get unique ID of the timer</td>
+                        </tr>
+                        <tr>
+                            <td class="api-name">Timer::restart(delay)</td>
+                            <td class="description">Restart timer with new delay</td>
+                        </tr>
+                        <tr>
+                            <td class="api-name">getActiveTimerCount()</td>
+                            <td class="description">Get number of currently active/running timers</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Table 3: Message Related -->
+        <div class="table-section">
+            <h2 class="table-title">Message Related APIs</h2>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 20%;">Category</th>
+                            <th style="width: 35%;">API Name</th>
+                            <th style="width: 45%;">Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="category" rowspan="8">Message Creation</td>
+                            <td class="api-name">obtainMessage()</td>
+                            <td class="description">Create empty message to send via Handler</td>
+                        </tr>
+                        <tr>
+                            <td class="api-name">obtainMessage(what)</td>
+                            <td class="description">Create message with message code/type</td>
+                        </tr>
+                        <tr>
+                            <td class="api-name">obtainMessage(what, arg1)</td>
+                            <td class="description">Create message with code + 1 integer argument</td>
+                        </tr>
+                        <tr>
+                            <td class="api-name">obtainMessage(what, obj)</td>
+                            <td class="description">Create message with code + object pointer</td>
+                        </tr>
+                        <tr>
+                            <td class="api-name">obtainMessage(what, arg1, arg2)</td>
+                            <td class="description">Create message with code + 2 integer arguments</td>
+                        </tr>
+                        <tr>
+                            <td class="api-name">obtainMessage(what, arg1, arg2, obj)</td>
+                            <td class="description">Create message with code + 2 args + object pointer</td>
+                        </tr>
+                        <tr>
+                            <td class="api-name">obtainMessage(what, arg1, arg2, arg3)</td>
+                            <td class="description">Create message with code + 3 integer arguments</td>
+                        </tr>
+                        <tr>
+                            <td class="api-name">obtainMessage(what, spRef)</td>
+                            <td class="description">Create message with code + shared_ptr reference</td>
+                        </tr>
+                        
+                        <tr>
+                            <td class="category" rowspan="3">Message Sending</td>
+                            <td class="api-name">sendMessage(message)</td>
+                            <td class="description">Send message immediately to message queue</td>
+                        </tr>
+                        <tr>
+                            <td class="api-name">sendMessageDelayed(message, delayMs)</td>
+                            <td class="description">Send message after delay (milliseconds)</td>
+                        </tr>
+                        <tr>
+                            <td class="api-name">sendMessageAtTime(message, whenUs)</td>
+                            <td class="description">Send message at specific time (microseconds)</td>
+                        </tr>
+                        
+                        <tr>
+                            <td class="category" rowspan="3">Message Management</td>
+                            <td class="api-name">hasMessages(what)</td>
+                            <td class="description">Check if messages with this code exist in queue</td>
+                        </tr>
+                        <tr>
+                            <td class="api-name">removeMessages(what)</td>
+                            <td class="description">Remove all messages with this code from queue</td>
+                        </tr>
+                        <tr>
+                            <td class="api-name">removeMessages(what, obj)</td>
+                            <td class="description">Remove messages with specific code + object</td>
+                        </tr>
+                        
+                        <tr>
+                            <td class="category" rowspan="7">Message Processing</td>
+                            <td class="api-name">dispatchMessage(message)</td>
+                            <td class="description">Dispatch message to handleMessage() for processing</td>
+                        </tr>
+                        <tr>
+                            <td class="api-name">handleMessage(message)</td>
+                            <td class="description">Pure virtual method to process message (client override)</td>
+                        </tr>
+                        <tr>
+                            <td class="api-name">uptimeMicros()</td>
+                            <td class="description">Get current system time (microseconds since boot)</td>
+                        </tr>
+                        <tr>
+                            <td class="api-name">Message::sendToTarget()</td>
+                            <td class="description">Send message to its target handler</td>
+                        </tr>
+                        <tr>
+                            <td class="api-name">Message::dup()</td>
+                            <td class="description">Create duplicate copy of message</td>
+                        </tr>
+                        <tr>
+                            <td class="api-name">Message::clear()</td>
+                            <td class="description">Clear/reset all message fields</td>
+                        </tr>
+                        <tr>
+                            <td class="api-name">Message::getObject&lt;T&gt;(obj)</td>
+                            <td class="description">Extract typed object from message's spRef</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Table 4: CPU Task Execution & Loop Control -->
+        <div class="table-section">
+            <h2 class="table-title">CPU Task Execution & Loop Control APIs</h2>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 20%;">Category</th>
+                            <th style="width: 35%;">API Name</th>
+                            <th style="width: 45%;">Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="category" rowspan="2">CPU Task Execution</td>
+                            <td class="api-name">CpuTaskExecutor::executeAsync(looper, func)</td>
+                            <td class="description">Execute CPU-bound task on separate background thread, return result to looper</td>
+                        </tr>
+                        <tr>
+                            <td class="api-name">CpuTaskExecutor::executeAsync(looper, func, timeout)</td>
+                            <td class="description">Execute CPU-bound task on separate background thread with timeout</td>
+                        </tr>
+                        
+                        <tr>
+                            <td class="category" rowspan="3">Loop Control</td>
+                            <td class="api-name">loop()</td>
+                            <td class="description">Start event loop (blocking call), process messages/functions</td>
+                        </tr>
+                        <tr>
+                            <td class="api-name">exit()</td>
+                            <td class="description">Stop event loop, exit from loop()</td>
+                        </tr>
+                        <tr>
+                            <td class="api-name">EventQueue()</td>
+                            <td class="description">Get direct access to EventQueue object</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,355 @@
+@startuml
+!define RECTANGLE class
+
+package "Programming Paradigm Abstraction" {
+    
+    package "Message API (Tiger Compatible)" {
+        RECTANGLE Handler {
+            +handleMessage(message)
+            +sendMessage(message)
+            +sendMessageDelayed(message, delay)
+            +obtainMessage(what, obj)
+            --
+            -looper : weak_ptr<SLLooper>
+            -EventQueue : EventQueue*
+        }
+        
+        RECTANGLE Message {
+            +what : int
+            +arg1 : int
+            +arg2 : int
+            +obj : any
+            +when : int64_t
+            --
+            +obtain(handler, what)
+            +obtain(handler, what, obj)
+            +recycle()
+        }
+    }
+    
+    package "Function API (Modern C++)" {
+        RECTANGLE "std::function<void()>" {
+            <<template>>
+            +operator()()
+            --
+            -target : callable
+        }
+        
+        RECTANGLE FunctionWrapper {
+            +execute()
+            +isValid()
+            --
+            -task : function<void()>
+            -executionTime : int64_t
+        }
+    }
+    
+    package "Promise API (Async Chains)" {
+        RECTANGLE "Promise<T>" {
+            +then<U>(func: T->U) : Promise<U>
+            +catch_error(handler) : Promise<T>
+            +set_value(value: T)
+            +set_exception(exception_ptr)
+            --
+            -state : shared_ptr<State<T>>
+        }
+        
+        RECTANGLE "State<T>" {
+            +setValue(T&& value)
+            +setException(exception_ptr)
+            +executeContination(T value)
+            --
+            -result : optional<T>
+            -continuation : function<void(T)>
+            -errorHandler : function<void(exception_ptr)>
+        }
+    }
+}
+
+package "Unified Processing Layer" {
+    RECTANGLE SLLooper {
+        ' Message API
+        +EventQueue() : EventQueue*
+        +sendMessage(message)
+        
+        ' Function API  
+        +post(function<void()>)
+        +postDelayed(function<void()>, delay)
+        
+        ' Promise API
+        +enqueuePromise<T>() : Promise<T>
+        +postWork<T>(function<T()>) : Promise<T>
+        --
+        -EventQueue : unique_ptr<EventQueue>
+        --
+        +loop() : bool
+    }
+    
+    RECTANGLE EventQueue {
+        +enqueueMessage(message, when)
+        +enqueueFunction(task)
+        +enqueuePromise<T>() : Promise<T>
+        +pollNext() : QueueItem
+        --
+        -messages : priority_queue<QueueItem>
+        -promiseCounter : atomic<uint64_t>
+        --
+        +QueueItemType : {MESSAGE, FUNCTION, PROMISE}
+    }
+    
+    RECTANGLE QueueItem {
+        +type : QueueItemType
+        +when : int64_t
+        +message : shared_ptr<Message>
+        +task : function<void()>
+        +promiseId : uint64_t
+    }
+}
+
+' Relationships
+Handler --> Message : creates/sends
+Handler --> SLLooper : uses
+"std::function<void()>" --> FunctionWrapper : wrapped by
+FunctionWrapper --> SLLooper : posted to
+"Promise<T>" --> "State<T>" : contains
+"Promise<T>" --> SLLooper : created by
+
+SLLooper --> EventQueue : manages
+EventQueue --> QueueItem : contains
+QueueItem --> Message : may contain
+QueueItem --> "std::function<void()>" : may contain
+
+note top of Handler : Traditional Android-style\nmessage passing (backward compatible)
+note right of "std::function<void()>" : Modern C++ functional\nprogramming paradigm
+note bottom of "Promise<T>" : Composable async operations\nwith error handling
+note left of SLLooper : Unified processing for\nall three paradigms
+
+@enduml
+
+
+@startuml
+participant "Client" as Client
+participant "SLLooper" as Looper
+participant "EventQueue" as MQ
+participant "Handler" as Handler
+participant "Message" as Msg
+participant "Promise<T>" as Promise
+
+== Message API Paradigm (Tiger Compatible) ==
+Client -> Handler : new Handler(looper)
+Client -> Msg : obtain(handler, WHAT, data)
+activate Msg
+Msg --> Client : message
+Client -> Handler : sendMessage(message)
+activate Handler
+Handler -> Looper : sendMessage(message)
+activate Looper
+Looper -> MQ : enqueueMessage(message, now)
+activate MQ
+MQ --> Looper : success
+deactivate MQ
+Looper --> Handler : void
+deactivate Looper
+deactivate Handler
+
+note over Looper : Event loop processes message
+Looper -> MQ : pollNext()
+activate MQ
+MQ --> Looper : QueueItem(MESSAGE)
+deactivate MQ
+Looper -> Handler : handleMessage(message)
+activate Handler
+Handler -> Client : business logic execution
+deactivate Handler
+deactivate Msg
+
+== Function API Paradigm (Modern C++) ==
+Client -> Looper : post([]() { /* work */ })
+activate Looper
+Looper -> MQ : enqueueFunction(lambda)
+activate MQ
+MQ --> Looper : success
+deactivate MQ
+Looper --> Client : void
+deactivate Looper
+
+note over Looper : Event loop processes function
+Looper -> MQ : pollNext()
+activate MQ
+MQ --> Looper : QueueItem(FUNCTION)
+deactivate MQ
+Looper -> Client : execute lambda directly
+
+== Promise API Paradigm (Async Chains) ==
+Client -> Looper : enqueuePromise<Data>()
+activate Looper
+Looper -> MQ : enqueuePromise<Data>()
+activate MQ
+MQ -> Promise : create Promise<Data>()
+activate Promise
+Promise --> MQ : Promise<Data>
+MQ --> Looper : Promise<Data>
+deactivate MQ
+Looper --> Client : Promise<Data>
+deactivate Looper
+
+Client -> Promise : then([](Data d) { return process(d); })
+Promise --> Client : Promise<Result>
+
+Client -> Promise : catch_error([](auto e) { handle(e); })
+
+note over Promise : Async execution and chaining
+Promise -> Looper : post result callback
+Looper -> Client : invoke then() callback
+deactivate Promise
+
+note over Looper : Same event loop handles\nall three paradigms uniformly
+
+@enduml
+
+
+
+@startuml
+object "Client" as Client
+object "SLLooper" as Looper
+object "EventQueue" as MQ
+object "Handler" as Handler
+object "Message" as Msg
+object "Function<void()>" as Func
+object "Promise<T>" as Promise
+
+' Spatial arrangement showing paradigm diversity
+Client -down-> Handler
+Client -right-> Looper
+Client -up-> Promise
+Looper -down-> MQ
+Handler -right-> Msg
+Looper -up-> Func
+
+' Message API interactions (Tiger compatible)
+Client -> Handler : 1: new Handler(looper)
+Client -> Msg : 2: obtain(handler, WHAT, data)
+Client -> Handler : 3: sendMessage(message)
+Handler -> Looper : 3.1: sendMessage(message)
+Looper -> MQ : 3.1.1: enqueueMessage(message, now)
+MQ -> Looper : 3.2: pollNext() -> QueueItem(MESSAGE)
+Looper -> Handler : 3.3: handleMessage(message)
+Handler -> Client : 3.4: business logic execution
+
+' Function API interactions (Modern C++)
+Client -> Looper : 4: post(lambda)
+Looper -> MQ : 4.1: enqueueFunction(lambda)
+MQ -> Looper : 4.2: pollNext() -> QueueItem(FUNCTION)
+Looper -> Client : 4.3: execute lambda directly
+
+' Promise API interactions (Async chains)
+Client -> Looper : 5: enqueuePromise<T>()
+Looper -> MQ : 5.1: enqueuePromise<T>()
+MQ -> Promise : 5.1.1: create Promise<T>()
+Promise -> Client : 5.2: return Promise<T>
+Client -> Promise : 5.3: then(continuation)
+Client -> Promise : 5.4: catch_error(errorHandler)
+Promise -> Looper : 5.5: post result callback
+Looper -> Client : 5.6: invoke then() callback
+
+' Unified processing
+Looper -> MQ : 6: unified event processing
+MQ -> Looper : 6.1: QueueItem(MESSAGE|FUNCTION|PROMISE)
+
+note bottom of Handler : Message paradigm:\nTraditional callback-based
+note top of Func : Function paradigm:\nModern C++ functional style
+note right of Promise : Promise paradigm:\nComposable async operations
+note left of Looper : Single event loop\nhandles all paradigms
+
+@enduml
+
+
+@startuml
+package "Client Programming Models" {
+    [Legacy Android Apps] as LegacyApps <<External>>
+    [Modern C++ Apps] as ModernApps <<External>>
+    [Async JavaScript-style Apps] as AsyncApps <<External>>
+}
+
+package "Programming Paradigm Layer" {
+    package "Message Paradigm" {
+        [Handler Components] as Handlers <<Component>>
+        [Message Objects] as Messages <<Component>>
+        [Callback Interface] as Callbacks <<Interface>>
+    }
+    
+    package "Function Paradigm" {
+        [Lambda Functions] as Lambdas <<Component>>
+        [Function Wrappers] as FuncWrappers <<Component>>
+        [Direct Execution] as DirectExec <<Component>>
+    }
+    
+    package "Promise Paradigm" {
+        [Promise Objects] as Promises <<Component>>
+        [State Management] as States <<Component>>
+        [Chain Composition] as Chains <<Component>>
+        [Exception Handling] as ErrorHandling <<Component>>
+    }
+}
+
+package "Unified Processing Core" {
+    [SLLooper] as Looper <<Facade>>
+    [EventQueue] as Queue <<Queue>>
+    [Event Dispatcher] as Dispatcher <<Component>>
+    [QueueItem Processor] as Processor <<Component>>
+}
+
+' Client to paradigm connections
+LegacyApps --> Handlers : Message API
+ModernApps --> Lambdas : Function API
+AsyncApps --> Promises : Promise API
+
+' Paradigm internal connections
+Handlers --> Messages : Creates/Sends
+Handlers --> Callbacks : Implements
+Lambdas --> FuncWrappers : Wrapped by
+FuncWrappers --> DirectExec : Executed by
+Promises --> States : State Management
+Promises --> Chains : Composition
+Chains --> ErrorHandling : Error Flow
+
+' Paradigm to core connections
+Handlers --> Looper : Message Operations
+Lambdas --> Looper : Function Operations
+Promises --> Looper : Promise Operations
+
+' Core processing connections
+Looper --> Queue : Event Management
+Queue --> Dispatcher : Event Dispatch
+Dispatcher --> Processor : Process Items
+Processor --> Callbacks : Message Callbacks
+Processor --> DirectExec : Function Execution
+Processor --> States : Promise Resolution
+
+' Annotations
+note "Backward Compatible\nMessage/Handler Model" as N1
+N1 .. Handlers
+
+note "Modern C++\nFunctional Programming" as N2
+N2 .. Lambdas
+
+note "Composable Async\nChain Operations" as N3
+N3 .. Promises
+
+note "Unified Event Processing\nfor All Paradigms" as N4
+N4 .. Queue
+
+note "Single Event Loop\nMultiple Programming Styles" as N5
+N5 .. Looper
+
+' Legend
+legend right
+    |Color| Type |
+    |<#LightBlue>| Internal Component |
+    |<#LightGreen>| External Client |
+    |<#Orange>| Interface/API |
+    |<#Yellow>| Queue/Storage |
+    |<#Pink>| Facade/Core |
+endlegend
+
+@enduml

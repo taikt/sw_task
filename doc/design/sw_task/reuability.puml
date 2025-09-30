@@ -1,0 +1,155 @@
+@startuml
+title "SW Task Framework - Backward Compatible: Message API + Function API"
+
+autonumber
+
+participant "Legacy Tiger App" as LegacyApp
+participant "Modern C++ App" as ModernApp
+
+box "SW Task Framework (Backward Compatible)" #LightBlue
+    participant "Handler\n(Legacy Preserved)" as Handler
+    participant "SLLooper\n(Enhanced)" as SLLooper
+    participant "EventQueue\n(Unified)" as MQ
+end box
+
+== Legacy API Preservation (Message Pattern) ==
+LegacyApp -> Handler : obtainMessage(what, arg1, arg2)
+activate Handler
+note right of LegacyApp : Tiger API preserved\nHandler manages messages
+Handler -> Handler : Message::obtain(shared_from_this(), what, arg1, arg2)
+Handler --> LegacyApp : Message object
+deactivate Handler
+
+LegacyApp -> Handler : sendMessage(message)
+activate Handler
+note right of Handler : Handler.sendMessage()\nNOT SLLooper
+Handler -> MQ : enqueueMessage(message, whenUs)
+activate MQ
+note right of MQ : Legacy messages use\nunified EventQueue
+MQ -> MQ : insert as MESSAGE type
+MQ --> Handler : queued
+deactivate MQ
+Handler --> LegacyApp : success
+deactivate Handler
+
+== Modern API Addition (Function Pattern) ==
+ModernApp -> SLLooper : post(lambda_func)
+activate SLLooper
+note right of ModernApp : Modern Function API\nadded to SLLooper
+SLLooper -> MQ : enqueueFunction(lambda)
+activate MQ
+note right of MQ : Template-based\ntype safety
+MQ -> MQ : create packaged_task<T>()
+MQ -> MQ : insert as FUNCTION type
+MQ --> SLLooper : future<T>
+deactivate MQ
+SLLooper --> ModernApp : future<T>
+deactivate SLLooper
+
+== Unified Processing (Both APIs Coexist) ==
+SLLooper -> MQ : pollNext()
+activate SLLooper
+activate MQ
+note right of MQ : Single queue processes\nMESSAGE + FUNCTION types
+MQ --> SLLooper : QueueItem (MESSAGE or FUNCTION)
+deactivate MQ
+
+alt Legacy Message Processing
+    SLLooper -> Handler : dispatchMessage(message)
+    activate Handler
+    Handler -> Handler : handleMessage(message)
+    note right of Handler : Legacy Handler pattern\npreserved exactly
+    Handler --> SLLooper : processed
+    deactivate Handler
+else Modern Function Processing
+    SLLooper -> SLLooper : execute packaged_task
+    note right of SLLooper : Type-safe lambda\nexecution
+    SLLooper --> SLLooper : result ready
+end
+deactivate SLLooper
+
+note over Handler, SLLooper : Binary compatibility maintained\nLegacy and modern code coexist
+
+@enduml
+
+
+@startuml
+'title "SW Task Framework - Component & Connector View (Backward Compatible Design)"
+
+!define COMPONENT_COLOR #E6F3FF
+!define CONNECTOR_COLOR #FFE6E6
+!define INTERFACE_COLOR #E6FFE6
+
+package "Client Applications" as ClientApps {
+    component [Legacy Tiger Application] as LegacyApp COMPONENT_COLOR
+    component [Modern C++ Application] as ModernApp COMPONENT_COLOR
+}
+
+package "SW Task Framework" as Framework {
+    
+    package "API Layer" as APILayer {
+        interface "Message API" as MessageAPI INTERFACE_COLOR
+        interface "Function API" as FunctionAPI INTERFACE_COLOR
+        
+        component [Handler\n(Legacy Preserved)] as Handler COMPONENT_COLOR
+        component [SLLooper\n(Enhanced Facade)] as SLLooper COMPONENT_COLOR
+        
+        Handler -up- MessageAPI
+        SLLooper -up- FunctionAPI
+    }
+    
+    package "Processing Layer" as ProcessingLayer {
+        component [EventQueue\n(Unified)] as EventQueue COMPONENT_COLOR
+        
+        interface "Queue Operations" as QueueOps INTERFACE_COLOR
+        EventQueue -up- QueueOps
+    }
+    
+    package "Execution Layer" as ExecutionLayer {
+        component [Event Loop\n(Main Thread)] as EventLoop COMPONENT_COLOR
+        component [Message Dispatcher] as MessageDispatcher COMPONENT_COLOR
+        component [Function Executor] as FunctionExecutor COMPONENT_COLOR
+        
+        interface "Event Processing" as EventProc INTERFACE_COLOR
+        EventLoop -up- EventProc
+    }
+}
+
+' Client connections
+LegacyApp ..> MessageAPI : uses
+ModernApp ..> FunctionAPI : uses
+
+' Internal connections
+Handler ..> QueueOps : enqueueMessage()
+SLLooper ..> QueueOps : enqueueFunction()
+
+SLLooper ..> EventProc : pollNext()
+EventLoop ..> QueueOps : pollNext()
+
+EventLoop --> MessageDispatcher : MESSAGE type
+EventLoop --> FunctionExecutor : FUNCTION type
+
+MessageDispatcher ..> Handler : dispatchMessage()
+
+' Connector annotations
+'note right of MessageAPI : obtainMessage()\nsendMessage()
+'note right of FunctionAPI : post(lambda)\nfuture<T> return
+
+'note bottom of EventQueue : Unified storage:\n- MESSAGE items\n- FUNCTION items\n- Type-safe operations
+
+'note bottom of EventLoop : Single thread processes\nboth API types\nMaintains order
+
+' Compatibility note
+' note as CompatibilityNote
+' **Backward Compatibility Strategy:**
+' • Legacy Handler API preserved exactly
+' • Modern Function API added to SLLooper
+' • Unified EventQueue handles both types
+' • Single event loop processes all items
+' • Binary compatibility maintained
+' end note
+
+' CompatibilityNote .. Handler
+' CompatibilityNote .. SLLooper
+
+@enduml

@@ -1,0 +1,188 @@
+@startuml
+
+!define TIGER_COMPONENT_COLOR #D4F4D4
+!define CLIENT_COLOR #FFE4B5
+!define INTERFACE_COLOR #C8F7C5
+
+package "Tiger Looper Framework" {
+    
+    package "Monolithic Interface Layer" {
+        component [Handler\n(Single Pattern Only)] as Handler TIGER_COMPONENT_COLOR
+        
+        interface "Message API Only" as MessageAPI INTERFACE_COLOR
+        Handler -up- MessageAPI
+    }
+    
+    package "Core Processing" {
+        component [SLLooper\n(Hidden Complexity)] as SLLooper TIGER_COMPONENT_COLOR
+        component [EventQueue\n(Direct Access)] as EventQueue TIGER_COMPONENT_COLOR
+        
+        interface "Internal Operations" as InternalOps INTERFACE_COLOR
+        SLLooper -up- InternalOps
+    }
+}
+
+package "Client Applications" {
+    component [Android Developer] as AndroidDev CLIENT_COLOR
+    component [Modern C++ Developer] as ModernDev CLIENT_COLOR
+    component [Async Expert] as AsyncExpert CLIENT_COLOR
+}
+
+AndroidDev ..> MessageAPI : obtainMessage(what, arg1, arg2)\nsendMessage()\nhandleMessage()
+ModernDev ..> MessageAPI : obtainMessage(what, arg1, arg2)\nsendMessage()\nhandleMessage()
+AsyncExpert ..> MessageAPI : obtainMessage(what, arg1, arg2)\nsendMessage()\nhandleMessage()
+
+Handler ..> EventQueue : enqueueMessage(msg, whenUs)
+SLLooper ..> EventQueue : poll()
+SLLooper ..> Handler : dispatchMessage()
+
+note right of Handler
+**Single Access Pattern**
+• Only Message/Handler programming style
+• No facade abstraction
+• All developers forced to use same pattern
+• Type unsafe void* operations
+end note
+
+
+note as MonolithicNote
+**Monolithic Interface Problems:**
+• Single programming paradigm only
+• No developer choice or flexibility
+• Complex subsystem interactions exposed
+• Type unsafe operations (void* obj)
+• Verbose code required for simple tasks
+• No modern C++ features utilized
+end note
+
+MonolithicNote .. Handler
+
+@enduml
+
+
+@startuml
+
+package "Client Applications" {
+    rectangle "Android Style User" as Client
+}
+
+package "Tiger Looper Framework" #LightYellow {
+    
+    package "Monolithic Interface Layer" {
+        rectangle "Handler" as Handler
+        rectangle "Message" as Message
+    }
+    
+    package "Event Loop" {
+        rectangle "SLLooper" as SLLooper
+        rectangle "EventQueue" as EventQueue
+    }
+}
+
+' Pure "uses" dependencies only
+Client ..> Handler : uses
+
+Handler ..> Message : uses
+Handler ..> EventQueue : uses
+
+SLLooper ..> EventQueue : uses
+SLLooper ..> Handler : uses
+
+' ' Notes about limitations
+' note right of Handler
+' **Single Access Pattern**
+' • Only Message/Handler programming style
+' • No facade abstraction
+' • All developers forced to use same pattern
+' • Type unsafe void* operations
+' end note
+
+' note as MonolithicNote
+' **Monolithic Interface Problems:**
+' • Single programming paradigm only
+' • No developer choice or flexibility
+' • Complex subsystem interactions exposed
+' • Type unsafe operations (void* obj)
+' • Verbose code required for simple tasks
+' • No modern C++ features utilized
+' end note
+
+' MonolithicNote .. Handler
+
+' Legend
+' legend right
+'     | ..> | Uses dependency |
+' endlegend
+
+@enduml
+
+
+@startuml
+
+package "Tiger Looper Framework" #FFE4E1 {
+    rectangle "Single Type Event Loop" as TigerLoop {
+        rectangle "SLLooper\n(Message Only)" as TigerSLLooper
+        rectangle "EventQueue\n[Message, Message, Message...]" as TigerQueue
+        rectangle "Handler Pattern Only" as TigerHandler
+    }
+    
+    note right of TigerQueue
+    **Queue Content:**
+    • std::shared_ptr<Message>
+    • Single type storage
+    • Message objects only
+    end note
+}
+
+package "SW Task Framework" #E1F5FE {
+    rectangle "Dual Type Event Loop" as SWLoop {
+        rectangle "SLLooper\n(Message + Functor)" as SWSLLooper
+        rectangle "EventQueue\n[QueueItem, QueueItem, QueueItem...]" as SWQueue
+        rectangle "Handler + Function API" as SWHandler
+    }
+    
+    rectangle "QueueItem Details" as QueueDetail {
+        rectangle "QueueItem::MESSAGE\n→ Message" as QueueMsg
+        rectangle "QueueItem::FUNCTION\n→ std::function" as QueueFunc
+    }
+    
+    note right of SWQueue
+    **Queue Content:**
+    • std::shared_ptr<QueueItem>
+    • Unified container
+    • MESSAGE or FUNCTION types
+    end note
+}
+
+package "Client Usage" #F3E5F5 {
+    rectangle "Android Style User" as AndroidUser
+    rectangle "Modern C++ User" as ModernUser
+}
+
+' Uses dependencies (dotted lines)
+AndroidUser ..> TigerHandler : obtainMessage()\nsendMessage()
+AndroidUser ..> SWHandler : obtainMessage()\nsendMessage()
+ModernUser ..> SWHandler : post(lambda)\npostDelayed(function)
+TigerSLLooper ..> TigerQueue : poll()
+SWSLLooper ..> SWQueue : poll()
+
+' Contains relationships (solid lines with diamond)
+SWQueue *-- QueueDetail : contains
+QueueDetail *-- QueueMsg : contains MESSAGE
+QueueDetail *-- QueueFunc : contains FUNCTION
+
+' Processing difference note (no connections)
+note as ProcessingNote
+**Event Loop Processing:**
+
+**Tiger:** loop() → poll() → Message → dispatchMessage()
+**SW Task:** loop() → poll() → QueueItem → dispatch(MESSAGE/FUNCTION)
+end note
+
+' ' Legend
+' legend right
+'     | ..> | Uses dependency |
+'     | *-- | Contains relationship |
+' endlegend
+
+@enduml

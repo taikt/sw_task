@@ -1,0 +1,33 @@
+@startuml
+'title "SW Task Framework - postWork() for Heavy Tasks (Worker Thread)"
+
+rectangle "Client\nApplication" as Client
+
+package "SW Task Framework" #LightBlue {
+    
+    package "Main Thread" {
+        rectangle "SLLooper\n(Main Thread Event Loop)" as Looper
+    }
+    
+    package "CPU-bound Task" {
+        rectangle "CpuTaskExecutor" as CpuExec
+        rectangle "CPU-bound Task Thread" as WorkerThread <<Thread>>
+    }
+    
+    package "Async Helper" {
+        rectangle "Promise" as Promise
+        rectangle "State" as State
+    }
+}
+
+' Heavy Task Flow (Isolated Worker Thread)
+Client --> Looper : "1: postWork(heavyTask)"
+Looper --> CpuExec : "2: executeAsync(heavyTask)"
+CpuExec --> Promise : "3: create Promise<T>()"
+Promise --> State : "4: create State<T>()"
+CpuExec --> WorkerThread : "5: execute on worker thread"
+WorkerThread --> State : "6: setValue(result)"
+State --> Looper : "7: post continuation"
+Looper --> Client : "8: invoke callback"
+
+@enduml

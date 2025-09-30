@@ -1,0 +1,154 @@
+
+@startuml
+
+package "Tiger Looper framework" #LightYellow{
+
+    package "Timer Creation" #FFE4E1 {
+        rectangle "TimerManager" as TM
+        rectangle "timer_create\n(SIGEV_THREAD)" as TC
+    }
+    
+    package "Thread Explosion Problem" #FFCCCC {
+        circle "Timer 1 expires\n→ New Thread A\n(8MB)" as T1
+        circle "Timer 2 expires\n→ New Thread B\n(8MB)" as T2
+        circle "Timer 3 expires\n→ New Thread C\n(8MB)" as T3
+        circle "..." as Dots
+        circle "Timer N expires\n→ New Thread N\n(8MB)" as TN
+    }
+    
+    package "Short-lived Callback Threads" #DDDDFF {
+        rectangle "timerThreadFunc()" as Callback
+    }
+}
+
+package "Client Application" #F3E5F5 {
+    rectangle "Timer User" as Client
+}
+
+' Flow connections
+Client ..> TM : startTimer(messageId, timeout)
+TM ..> TC : timer_create(SIGEV_THREAD, timerThreadFunc)
+
+TC --> T1 : Timer 1 expires → spawn thread
+TC --> T2 : Timer 2 expires → spawn thread
+TC --> T3 : Timer 3 expires → spawn thread  
+TC --> TN : Timer N expires → spawn thread
+
+T1 --> Callback : Thread A runs callback
+T2 --> Callback : Thread B runs callback
+T3 --> Callback : Thread C runs callback
+TN --> Callback : Thread N runs callback
+
+' note right of Callback
+' **Per-Timer Thread Creation:**
+' • Each timer expiry spawns NEW thread
+' • Thread runs timerThreadFunc() 
+' • pthread_detach() immediately
+' • sendMessage() to main thread
+' • Thread terminates after callback
+' **NO thread pooling or reuse!**
+' end note
+
+' note as ProblemNote
+' **Real Tiger Timer Problems:**
+' 1. **New Thread Per Expiry:** Every timer creates fresh thread
+' 2. **Memory Overhead:** 8MB stack per callback thread  
+' 3. **Thread Creation Cost:** spawn/destroy overhead each time
+' 4. **No Reuse:** Threads die after single callback
+' 5. **Concurrent Thread Limit:** System can't handle many simultaneous timers
+' end note
+
+' ProblemNote .. T1
+
+@enduml
+
+
+@startuml
+
+package "Tiger Looper framework" #LightYellow {
+    rectangle "TimerManager" as TigerTM
+    rectangle "timer_create\n(SIGEV_THREAD)" as TigerTC
+    
+    package "Thread Explosion" #FFCCCC {
+        circle "Timer 1\n→ Thread A (8MB)" as TT1
+        circle "Timer 2\n→ Thread B (8MB)" as TT2
+        circle "Timer 3\n→ Thread C (8MB)" as TT3
+        circle "Timer N\n→ Thread N (8MB)" as TTN
+    }
+}
+
+package "SW Task Framework" #LightBlue {
+    rectangle "TimerManager" as SWTM
+    rectangle "epoll + timerfd\n(Single Thread)" as SWEpoll
+    
+    package "Unified Timer Thread" #E8F5E8 {
+        rectangle "Timer Thread\n(8MB Total)" as SWThread
+        rectangle "epoll_wait()\nhandles ALL timers" as SWEpollWait
+    }
+    
+    package "Timer Objects" #F0F8FF {
+        rectangle "Timer 1 (timerfd)" as ST1
+        rectangle "Timer 2 (timerfd)" as ST2
+        rectangle "Timer 3 (timerfd)" as ST3
+        rectangle "Timer N (timerfd)" as STN
+    }
+}
+
+package "Client Usage" #F3E5F5 {
+    rectangle "Timer User" as Client
+}
+
+' Tiger Looper connections (wasteful)
+Client ..> TigerTM : startTimer()
+TigerTM ..> TigerTC : timer_create()
+TigerTC --> TT1 : spawn Thread A
+TigerTC --> TT2 : spawn Thread B  
+TigerTC --> TT3 : spawn Thread C
+TigerTC --> TTN : spawn Thread N
+
+' SW Task connections (efficient)
+Client ..> SWTM : startTimer()
+SWTM ..> SWEpoll : timerfd_create()
+SWEpoll ..> ST1 : creates Timer 1
+SWEpoll ..> ST2 : creates Timer 2
+SWEpoll ..> ST3 : creates Timer 3
+SWEpoll ..> STN : creates Timer N
+
+ST1 --> SWThread : expires → event
+ST2 --> SWThread : expires → event
+ST3 --> SWThread : expires → event
+STN --> SWThread : expires → event
+
+SWThread --> SWEpollWait : epoll_wait() handles all
+
+' note right of TT1
+' **Tiger Problems:**
+' • N timers = N threads
+' • 100 timers = 800MB
+' • Thread creation overhead
+' • Context switch cost
+' • System limits (~100-200)
+' end note
+
+' note right of SWThread
+' **SW Task Advantages:**
+' • N timers = 1 thread only
+' • 1000 timers = 8MB total
+' • No thread creation cost
+' • Single epoll_wait() call
+' • Scales to thousands
+' end note
+
+' note as ComparisonNote
+' **Resource Comparison:**
+' **Tiger:** 100 timers = 100 threads = 800MB
+' **SW Task:** 1000 timers = 1 thread = 8MB
+' **Efficiency gain: 100x less memory!**
+' end note
+
+' ComparisonNote .. SWThread
+' ComparisonNote .. TT1
+
+
+
+@enduml

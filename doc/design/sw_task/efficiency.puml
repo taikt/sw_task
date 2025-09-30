@@ -1,0 +1,229 @@
+
+
+
+
+
+
+@startuml
+'title "SW Task Framework - Timer Creation Flow (O(1) Operation)"
+
+autonumber
+
+participant "Client Application" as Client
+
+box "SW Task Framework" #LightBlue
+    participant "SLLooper\n(Event Loop Main thread)" as MainLoop
+    participant "Timer" as Timer
+    participant "TimerManager" as TimerMgr
+end box
+
+participant "Linux Kernel\n(epoll + timerfd)" as LinuxKernel
+
+== Timer Creation (O(1) Operation) ==
+Client -> MainLoop : addTimer(callback, delay_ms)
+activate MainLoop
+note right of Client : Create timer with callback
+
+MainLoop -> MainLoop : initializeTimerManager()
+
+MainLoop -> TimerMgr : createTimerInternal(callback, delay_ms, false, &cancelled)
+activate TimerMgr
+
+TimerMgr -> TimerMgr : generate unique TimerId
+TimerMgr -> LinuxKernel : timerfd_create(CLOCK_MONOTONIC)
+activate LinuxKernel
+note right of LinuxKernel : Create kernel timer object
+LinuxKernel --> TimerMgr : return timer_fd
+
+TimerMgr -> LinuxKernel : timerfd_settime(timer_fd, itimerspec)
+note right of LinuxKernel : Configure timer delay/interval
+LinuxKernel --> TimerMgr : timer configured
+
+TimerMgr -> LinuxKernel : epoll_ctl(EPOLL_CTL_ADD, timer_fd)
+note right of LinuxKernel : Add to epoll instance\nO(1) operation
+LinuxKernel --> TimerMgr : added to epoll
+deactivate LinuxKernel
+
+TimerMgr -> TimerMgr : store TimerInfo{fd, callback, id, cancelled}
+TimerMgr --> MainLoop : return TimerId
+deactivate TimerMgr
+
+MainLoop -> Timer : new Timer(TimerId, weak_ptr<SLLooper>)
+activate Timer
+note right of Timer : Create Timer object with\nactual TimerId from TimerManager
+
+MainLoop -> TimerMgr : updateCancelledPtr(TimerId, &timer.mCancelled)
+Timer --> Client : return Timer object
+deactivate Timer
+deactivate MainLoop
+
+@enduml
+
+
+@startuml
+'title "SW Task Framework - Timer Thread Processing (1 Thread Handles Many Timers)"
+
+autonumber
+
+participant "Client Application" as Client
+
+box "SW Task Framework" #LightBlue
+    participant "SLLooper\n(Event Loop Main thread)" as MainLoop
+    participant "EventQueue" as MQ
+    participant "TimerManager" as TimerMgr
+    participant "Timer Thread" as TimerThread
+end box
+
+participant "Linux Kernel\n(epoll + timerfd)" as LinuxKernel
+
+== Timer Thread Processing (1 Thread Handles Many Timers) ==
+TimerThread -> LinuxKernel : epoll_wait(events, MAX_EVENTS, 100ms)
+activate TimerThread
+activate LinuxKernel
+note right of TimerThread : Single thread monitors\nall timers via epoll
+
+LinuxKernel --> TimerThread : return timer events[]
+deactivate LinuxKernel
+
+loop For each timer event
+    TimerThread -> TimerThread : extract TimerId from event.data.u64
+    TimerThread -> TimerMgr : check if timer cancelled
+    activate TimerMgr
+    
+    alt Timer Active
+        TimerMgr -> LinuxKernel : read(timer_fd, &exp, sizeof(exp))
+        activate LinuxKernel
+        note right of LinuxKernel : Clear timer event\nGet expiration count
+        LinuxKernel --> TimerMgr : exp count
+        deactivate LinuxKernel
+        
+        TimerMgr -> MainLoop : post(callback)
+        activate MainLoop
+        'note right of MainLoop : Post callback to\nmain thread
+        
+        MainLoop -> MQ : enqueueFunction(callback)
+        activate MQ
+        MQ --> MainLoop : scheduled
+        deactivate MQ
+        deactivate MainLoop
+        
+        alt One-shot timer
+            TimerMgr -> TimerMgr : cleanupTimer(TimerId)
+            TimerMgr -> LinuxKernel : epoll_ctl(EPOLL_CTL_DEL)
+            TimerMgr -> LinuxKernel : close(timer_fd)
+        else Periodic timer
+            note right of TimerMgr : Keep timer active\nfor next period
+        end
+    else Timer Cancelled
+        TimerMgr -> LinuxKernel : read(timer_fd) // clear event
+        TimerMgr -> TimerMgr : cleanupTimer(TimerId)
+    end
+    deactivate TimerMgr
+end
+
+deactivate TimerThread
+
+== Callback Execution (Main Thread) ==
+MainLoop -> MQ : pollNext()
+activate MainLoop
+activate MQ
+MQ --> MainLoop : QueueItem (timer callback)
+deactivate MQ
+
+MainLoop -> Client : execute timer callback
+activate Client
+'note right of Client : Callback executed\non main thread SLLooper
+Client --> MainLoop : callback complete
+deactivate Client
+deactivate MainLoop
+
+@enduml
+
+
+
+@startuml
+
+rectangle "Client Application" as Client
+rectangle "epoll + timerfd" as EpollFd <<Linux Kernel>>
+
+package "SW Task Framework" #LightBlue {
+    
+    package "Main Thread Event Loop" {
+        rectangle "SLLooper" as Looper
+        rectangle "EventQueue" as Queue
+    }
+    
+    package "Timer system" #LightYellow {
+        rectangle "Timer" as Timer
+        rectangle "TimerManager" as TimerMgr
+        rectangle "TimerInfo" as TimerInfo
+        rectangle "Timer Thread" as TimerThread <<Thread>>
+    }
+}
+
+' Pure "uses" dependencies only
+Client ..> Looper : uses
+
+Looper ..> Queue : uses
+Looper ..> TimerMgr : uses
+Looper ..> Timer : uses
+
+Timer ..> TimerMgr : uses
+
+TimerMgr ..> TimerInfo : uses
+TimerMgr ..> TimerThread : uses
+TimerMgr ..> EpollFd : uses
+
+TimerThread ..> EpollFd : uses
+
+' ' Legend
+' legend right
+'     | ..> | Uses dependency |
+'     | <<Thread>> | Background thread |
+'     | <<Linux Kernel>> | OS integration |
+' endlegend
+
+@enduml
+
+
+
+
+@startuml
+'title "SW Task Framework - Timer Management Flow"
+
+rectangle "Client\nApplication" as Client
+
+package "SW Task Framework" #LightBlue {
+    
+    package "Main Thread" {
+        rectangle "SLLooper" as Looper
+        rectangle "Event Loop Thread\n" as EventLoopThread <<EventLoop>>
+        rectangle "EventQueue" as MQ
+    }
+    
+    package "Timer Subsystem" {
+        rectangle "Timer" as Timer
+        rectangle "TimerManager" as TimerMgr
+        rectangle "Timer Thread" as TimerThread <<Thread>>
+    }
+}
+
+rectangle "epoll + timerfd\n(Linux Kernel)" as LinuxKernel
+
+' Timer Creation Flow (Client Thread)
+Client --> Looper : "1: addTimer()"
+Looper --> Timer : "2: new Timer()"
+Looper --> TimerMgr : "3: createTimerInternal()"
+TimerMgr --> LinuxKernel : "4: createTimerFd(), epoll_ctl()"
+'TimerMgr --> Looper : "5: return TimerId"
+
+' Timer Processing Flow (Timer Thread)
+TimerThread --> LinuxKernel : "6: epoll_wait()"
+TimerMgr --> LinuxKernel : "7: read()"
+TimerMgr --> MQ : "8: enqueueFunction()"
+
+' Callback Execution Flow (Event Loop Thread)
+EventLoopThread --> MQ : "9: pollNext()"
+EventLoopThread --> Client : "10: execute callback"
+
+@enduml

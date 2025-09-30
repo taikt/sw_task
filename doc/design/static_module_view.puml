@@ -1,0 +1,69 @@
+
+@startuml
+
+rectangle "Client Application" as Client 
+rectangle "epoll + timerfd" as EpollFd <<Linux Kernel>>
+
+package "SW Task Framework" #LightYellow {
+    
+    package "Main Thread Event Loop" {
+        rectangle "SLLooper" as Looper
+        rectangle "EventQueue" as Queue
+        rectangle "QueueItem" as QueueItem
+    }
+    
+    package "Message System" #LightBlue {
+        rectangle "Handler" as Handler
+        rectangle "Message" as Message
+    }
+    
+    package "Timer System" #LightGreen {
+        rectangle "TimerManager" as TimerMgr
+        rectangle "Timer" as Timer
+    }
+    
+    package "CPU-bound Task Execution" #Orange {
+        rectangle "CpuTaskExecutor" as CpuExec
+        rectangle "CPUTaskThread" as AsyncWorker <<Thread>>
+    }
+    
+    package "Async Helper" #Pink {
+        rectangle "Promise<T>" as PromiseMgr
+        rectangle "State<T>" as StateMgr
+    }
+}
+
+' Pure "uses" dependencies only
+Client ..> Looper : uses
+Client ..> Handler : uses
+
+Looper ..> Queue : uses
+Looper ..> TimerMgr : uses
+Looper ..> CpuExec : uses
+
+Queue ..> QueueItem : uses
+
+QueueItem ..> Message : uses
+
+Handler ..> Message : uses
+Handler ..> Queue : uses
+
+TimerMgr ..> Timer : uses
+TimerMgr ..> EpollFd : uses
+
+CpuExec ..> PromiseMgr : uses
+CpuExec ..> AsyncWorker : uses
+
+PromiseMgr ..> StateMgr : uses
+StateMgr ..> Queue : uses
+
+' Legend
+legend right
+    | ..> | Uses dependency |
+    | <<Thread>> | Background thread |
+    | <<Linux Kernel>> | OS integration |
+endlegend
+
+
+
+@enduml

@@ -1,0 +1,58 @@
+
+
+
+
+
+@startuml
+
+rectangle "Android Style Use" as AndroidDev <<External>>
+rectangle "Modern C++ Style Use" as CppDev <<External>>  
+rectangle "Async JavaScript Style Use" as AsyncDev <<External>>
+
+package "SW Task Framework" #LightYellow {
+    
+    package "Facade Layer" #Pink {
+        rectangle "SLLooper" as SLLooper
+    }
+    
+    package "Event Processing" #LightBlue {
+        rectangle "EventQueue" as MQ
+        rectangle "Main Thread Event Loop" as MainLoop <<EventLoop>>
+    }
+    
+    package "Message Handling" #LightGreen {
+        rectangle "Handler" as Handler
+        rectangle "Message" as Message
+    }
+    
+    package "Async Helper" #Orange {
+        rectangle "Promise" as Promise
+        rectangle "State" as State
+    }
+}
+
+' Pure "uses" dependencies only
+AndroidDev ..> SLLooper : uses
+CppDev ..> SLLooper : uses
+AsyncDev ..> SLLooper : uses
+
+SLLooper ..> MQ : uses
+SLLooper ..> Handler : uses
+SLLooper ..> Promise : uses
+
+MQ ..> MainLoop : uses
+Handler ..> Message : uses
+Promise ..> State : uses
+
+MainLoop ..> Handler : uses
+MainLoop ..> Promise : uses
+State ..> MQ : uses
+
+' ' Legend
+' legend right
+'     | ..> | Uses dependency |
+'     | <<External>> | External client |
+'     | <<EventLoop>> | Event processing |
+' endlegend
+
+@enduml

@@ -1,0 +1,92 @@
+@startuml
+title "Tiger Looper Framework - Single Thread Architecture C&C"
+
+!define TIGER_COMPONENT_COLOR #D4F4D4
+!define CLIENT_COLOR #FFE4B5
+!define INTERFACE_COLOR #C8F7C5
+
+package "Client Applications" {
+    component [Application] as ClientApp CLIENT_COLOR
+}
+
+package "Tiger Looper Framework" {
+    
+    package "API Layer" {
+        interface "Message API" as MessageAPI INTERFACE_COLOR
+        component [Handler] as Handler TIGER_COMPONENT_COLOR
+        Handler -up- MessageAPI
+    }
+    
+    package "Core Processing - Single Thread" {
+        component [SLLooper\n(Single Event Loop)] as SLLooper TIGER_COMPONENT_COLOR
+        component [EventQueue\n(Sequential FIFO)] as EventQueue TIGER_COMPONENT_COLOR
+        
+        interface "Sequential Processing" as EventLoop INTERFACE_COLOR
+        SLLooper -up- EventLoop
+    }
+}
+
+ClientApp ..> MessageAPI : obtainMessage()\nsendMessage()
+
+Handler ..> EventQueue : enqueueMessage()
+SLLooper ..> EventQueue : poll() - BLOCKS
+SLLooper ..> Handler : dispatchMessage()
+
+note right of SLLooper
+**Single Event Thread**
+• All operations processed sequentially
+• UI blocks on CPU tasks (50-200ms)
+• No parallelism possible
+• Everything runs on same thread
+end note
+
+note bottom of EventQueue
+**Sequential Bottleneck**
+• FIFO processing only
+• No priority queues
+• Blocks entire system
+• CPU tasks freeze UI
+end note
+
+note as ProblemNote
+**Tiger Looper Problems:**
+• Single thread handles everything
+• CPU-bound tasks block UI responsiveness
+• No isolation between operations
+• Poor performance under load
+• Cannot utilize multiple CPU cores
+end note
+
+ProblemNote .. SLLooper
+
+@enduml
+
+
+@startuml
+'title "Tiger Looper Framework - Communication Diagram"
+
+rectangle "Client\nApplication" as Client
+
+package "Tiger Looper Framework" #LightYellow {
+    rectangle "Handler" as Handler  
+    rectangle "SLLooper\n(Main Thread Event Loop)" as Looper
+    rectangle "EventQueue\n(FIFO)" as Queue
+    rectangle "Message" as Message
+}
+
+' Communication links with sequence numbers
+Client --> Handler : 1: obtainMessage()\n2: sendMessage()
+Handler --> Message : 3: create/configure
+Handler --> Queue : 4: enqueueMessage()
+Looper --> Queue : 5: poll() 
+Queue --> Looper : 6: getMessage()
+Looper --> Handler : 7: dispatchMessage()
+Handler --> Client : 8: handleMessage()
+
+' Self-communication for loop
+Looper --> Looper : 9: loop()
+
+@enduml
+
+
+

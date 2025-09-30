@@ -1,0 +1,216 @@
+@startuml
+!define COMPONENT rectangle
+
+COMPONENT [Client Application] as Client 
+
+package "SW Task Framework" #LightYellow {
+    
+    package "Main Thread Event Loop" {
+        COMPONENT [SLLooper] as Looper <<Facade>>
+        COMPONENT [EventQueue] as Queue <<Queue>>
+    }
+    
+    package "Timer System" {
+        COMPONENT [TimerManager] as TimerMgr <<Manager>>
+        COMPONENT [epoll + timerfd] as EpollFd <<Linux Kernel>>
+    }
+    
+    package "CPU-bound Task Execution" {
+        COMPONENT [CpuTaskExecutor] as CpuExec <<Static Methods>>
+        COMPONENT [CPUTaskThread] as AsyncWorker <<Thread>>
+    }
+    
+    package "Async Helper" {
+        COMPONENT [Promise<T>] as PromiseMgr <<Template>>
+        COMPONENT [State<T>] as StateMgr <<Template>>
+    }
+}
+
+' Main flow connections
+Client --> Looper : post() / postWork()
+Looper --> Queue : enqueue functions/messages
+Queue --> Looper : poll next item
+Looper --> Client : execute callbacks
+
+' CPU task flow  
+Looper --> CpuExec : postWork(heavyTask)
+CpuExec --> PromiseMgr : create Promise<T>
+PromiseMgr --> StateMgr : contains State<T>
+CpuExec --> AsyncWorker : std::async(task)
+AsyncWorker --> StateMgr : setValue(result)
+StateMgr --> Queue : post continuation
+
+' Timer flow
+Looper --> TimerMgr : addTimer() / addPeriodicTimer()
+TimerMgr --> EpollFd : timerfd_create/epoll_wait
+EpollFd --> TimerMgr : timer expiration events
+TimerMgr --> Queue : post timer callbacks
+
+' Legend
+legend right
+    | --> | Data/Control flow |
+    | <<Linux Kernel>> | OS integration |
+endlegend
+
+@enduml
+
+
+@startuml
+!define COMPONENT rectangle
+
+COMPONENT [Client Application] as Client 
+COMPONENT [epoll + timerfd] as EpollFd <<Linux Kernel>>
+
+package "SW Task Framework" #LightYellow {
+    
+    package "Main Thread Event Loop" {
+        COMPONENT [SLLooper] as Looper <<Facade>>
+        COMPONENT [EventQueue] as Queue <<Queue>>
+        COMPONENT [QueueItem] as QueueItem <<Union Type>>
+    }
+    
+    package "Message System" #LightBlue {
+        COMPONENT [Handler] as Handler <<Abstract>>
+        COMPONENT [Message] as Message <<Data>>
+    }
+    
+    package "Timer System" #LightGreen {
+        COMPONENT [TimerManager] as TimerMgr <<Manager>>
+        COMPONENT [Timer] as Timer <<RAII>>
+    }
+    
+    package "CPU-bound Task Execution" #Orange {
+        COMPONENT [CpuTaskExecutor] as CpuExec <<Static Methods>>
+        COMPONENT [CPUTaskThread] as AsyncWorker <<Thread>>
+    }
+    
+    package "Async Helper" #Pink {
+        COMPONENT [Promise<T>] as PromiseMgr <<Template>>
+        COMPONENT [State<T>] as StateMgr <<Template>>
+    }
+}
+
+' Main flow connections
+Client --> Looper : post() / postWork()
+Client --> Handler : sendMessage()
+Looper --> Queue : enqueue QueueItem
+Queue --> Looper : poll QueueItem
+Looper --> Client : execute callbacks
+
+' QueueItem relationships
+Queue --> QueueItem : contains
+QueueItem --> Message : holds Message
+QueueItem --> PromiseMgr : holds packaged_task
+
+' Message system flow
+Handler --> Message : obtainMessage()
+Handler --> Queue : sendMessage()
+Queue --> Handler : dispatchMessage()
+
+' CPU task flow  
+Looper --> CpuExec : postWork(heavyTask)
+CpuExec --> PromiseMgr : create Promise<T>
+PromiseMgr --> StateMgr : contains State<T>
+CpuExec --> AsyncWorker : std::async(task)
+AsyncWorker --> StateMgr : setValue(result)
+StateMgr --> Queue : post continuation
+
+' Timer flow
+Client --> Looper : addTimer()
+Looper --> TimerMgr : createTimer()
+TimerMgr --> Timer : return RAII object
+TimerMgr --> EpollFd : timerfd_create/epoll_wait
+EpollFd --> TimerMgr : timer expiration events
+TimerMgr --> Queue : post timer callbacks
+
+' Promise chaining
+PromiseMgr --> PromiseMgr : .then() / .catchError()
+
+' Legend
+legend right
+    | --> | Data/Control flow |
+    | <<Union Type>> | Can hold different types |
+    | <<Linux Kernel>> | OS integration |
+    | <<RAII>> | Resource management |
+    | <<Template>> | Generic programming |
+endlegend
+
+note right of QueueItem
+    QueueItem is a union type that can hold:
+    - std::shared_ptr<Message>
+    - std::packaged_task<void()>
+    - Function callbacks from timers
+    - Promise continuations
+end note
+
+@enduml
+
+
+@startuml
+
+rectangle "Client Application" as Client 
+rectangle "epoll + timerfd" as EpollFd <<Linux Kernel>>
+
+package "SW Task Framework" #LightYellow {
+    
+    package "Main Thread Event Loop" {
+        rectangle "SLLooper" as Looper
+        rectangle "EventQueue" as Queue
+        rectangle "QueueItem" as QueueItem
+    }
+    
+    package "Message System" #LightBlue {
+        rectangle "Handler" as Handler
+        rectangle "Message" as Message
+    }
+    
+    package "Timer System" #LightGreen {
+        rectangle "TimerManager" as TimerMgr
+        rectangle "Timer" as Timer
+    }
+    
+    package "CPU-bound Task Execution" #Orange {
+        rectangle "CpuTaskExecutor" as CpuExec
+        rectangle "CPUTaskThread" as AsyncWorker <<Thread>>
+    }
+    
+    package "Async Helper" #Pink {
+        rectangle "Promise<T>" as PromiseMgr
+        rectangle "State<T>" as StateMgr
+    }
+}
+
+' Pure "uses" dependencies only
+Client ..> Looper : uses
+Client ..> Handler : uses
+
+Looper ..> Queue : uses
+Looper ..> TimerMgr : uses
+Looper ..> CpuExec : uses
+
+Queue ..> QueueItem : uses
+
+QueueItem ..> Message : uses
+
+Handler ..> Message : uses
+Handler ..> Queue : uses
+
+TimerMgr ..> Timer : uses
+TimerMgr ..> EpollFd : uses
+
+CpuExec ..> PromiseMgr : uses
+CpuExec ..> AsyncWorker : uses
+
+PromiseMgr ..> StateMgr : uses
+StateMgr ..> Queue : uses
+
+' ' Legend
+' legend right
+'     | ..> | Uses dependency |
+'     | <<Thread>> | Background thread |
+'     | <<Linux Kernel>> | OS integration |
+' endlegend
+
+
+
+@enduml

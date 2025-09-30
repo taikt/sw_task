@@ -1,0 +1,203 @@
+
+
+
+@startuml
+
+rectangle "Client Application" as Client
+
+package "SW Task Framework" #LightBlue {
+    
+    package "Async Helper" #Pink {
+        rectangle "Promise<T>" as PromiseMgr
+        rectangle "State<T>" as StateMgr
+        rectangle "Promise<void>" as PromiseVoid <<specialization>>
+        rectangle "State<std::monostate>" as StateMono <<specialization>>
+    }
+
+    package "Main Thread Event Loop" {
+        rectangle "SLLooper" as Looper
+        rectangle "EventQueue" as Queue
+    }
+}
+
+' External relationships - uses dependency only
+Client ..> Looper : uses
+Client ..> PromiseMgr : uses
+
+' Internal framework relationships - uses dependency only
+Looper ..> Queue : uses
+Queue ..> PromiseMgr : uses
+
+PromiseMgr ..> StateMgr : uses
+PromiseVoid ..> PromiseMgr : uses
+StateMono ..> StateMgr : uses
+
+@enduml
+
+
+
+
+
+
+
+
+@startuml
+'title "SW Task Framework - Promise Creation & Chaining Setup"
+
+autonumber
+
+participant "Client Application" as Client
+
+box "SW Task Framework" #LightBlue
+    participant "SLLooper\n(Event Loop)" as Looper
+    participant "EventQueue" as MQ
+    participant "Promise<T>" as Promise
+    participant "State<T>" as State
+end box
+
+== Promise Creation Phase ==
+Client -> Looper : createPromise<T>()
+activate Looper
+
+Looper -> MQ : enqueuePromise<T>()
+activate MQ
+
+MQ -> Promise : new Promise<T>()
+activate Promise
+
+Promise -> State : new State<T>()
+activate State
+note right of State : Initialize:\n- result = nullopt\n- exception = nullptr\n- continuation = nullptr
+State --> Promise : return
+deactivate State
+
+Promise --> MQ : return Promise<T>
+deactivate Promise
+
+MQ --> Looper : return Promise<T>
+deactivate MQ
+
+Looper --> Client : return Promise<T>
+deactivate Looper
+
+== Promise Chaining Setup ==
+Client -> Promise : then<U>(continuation_func)
+activate Promise
+Promise -> State : setContinuation(continuation_func)
+activate State
+State --> Promise : void
+deactivate State
+Promise --> Client : return Promise<U>
+deactivate Promise
+
+Client -> Promise : catch_error(error_handler)
+activate Promise
+Promise -> State : setErrorHandler(error_handler)
+activate State
+State --> Promise : void
+deactivate State
+Promise --> Client : return this Promise<T>
+deactivate Promise
+
+note over Client, State : Promise chain is now configured\nand ready for async execution
+
+@enduml
+
+
+@startuml
+'title "SW Task Framework - Async Execution & Event Loop Processing"
+
+autonumber
+
+participant "Client Application" as Client
+
+box "SW Task Framework" #LightBlue
+    participant "SLLooper\n(Event Loop)" as Looper
+    participant "EventQueue" as MQ
+    participant "Promise<T>" as Promise
+    participant "State<T>" as State
+end box
+
+== Async Execution & Resolution ==
+note over Client : External async operation completes
+Client ->> State : setValue(result) or setException(error)
+activate State
+'note right of State : Async call - non-blocking
+
+State ->> Looper : post continuation/error handler to event loop
+note right of Looper : Posted to internal event loop
+
+== Event Loop Processing ==
+Looper -> MQ : pollNext()
+activate MQ
+MQ --> Looper : return ready QueueItem
+deactivate MQ
+
+alt Normal Result Case
+    Looper -> State : executeContinuation(result)
+    activate State
+    State -> Client : invoke then() callback with result
+    activate Client
+    note right of Client : Callback execution
+    Client --> State : processing complete
+    deactivate Client
+    State --> Looper : execution complete
+    deactivate State
+else Exception Case
+    Looper -> State : executeErrorHandler(exception)
+    activate State
+    State -> Client : invoke catch_error() callback
+    activate Client
+    note right of Client : Error handling
+    Client --> State : error handled
+    deactivate Client
+    State --> Looper : error handling complete
+    deactivate State
+end
+
+deactivate State
+
+note over Promise : Promise chain continues\nwith next then() or catch_error()
+
+@enduml
+
+
+
+@startuml
+'title "SW Task Framework - Promise Creation and Execution Flow"
+
+rectangle "Client\nApplication" as Client
+
+package "SW Task Framework" #LightBlue {
+    
+    package "Main Thread" {
+        rectangle "SLLooper" as Looper
+        rectangle "EventQueue" as MQ
+        rectangle "Main Thread Event Loop" as MainLoop <<EventLoop>>
+    }
+    
+    package "Async Helper" {
+        rectangle "Promise" as Promise
+        rectangle "State" as State
+    }
+}
+
+' Promise Creation and Setup Flow
+Client --> Looper : "1: createPromise()"
+Looper --> MQ : "2: enqueuePromise()"
+MQ --> Promise : "3: new Promise()"
+Promise --> State : "4: new State()"
+
+' Promise Chaining Setup
+Client --> Promise : "5: then(), catch_error()"
+Promise --> State : "6: setContinuation(), setErrorHandler()"
+
+' Async Execution Flow
+Client --> State : "7: setValue/setException (async)"
+State --> MainLoop : "8: post continuation/error handler"
+MainLoop --> MQ : "9: schedule execution"
+MQ --> MainLoop : "10: pollNext()"
+MainLoop --> State : "11: executeContinuation/executeErrorHandler()"
+State --> Client : "12: invoke callbacks"
+
+@enduml

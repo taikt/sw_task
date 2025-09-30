@@ -1,0 +1,226 @@
+
+@startuml
+'title "SW Task Framework - post() for Normal Tasks (Main Thread)"
+
+rectangle "Client\nApplication" as Client
+
+package "SW Task Framework" #LightBlue {
+    
+    package "Main Thread" {
+        rectangle "SLLooper\n(Main Thread Event Loop)" as Looper
+        rectangle "EventQueue" as MQ
+    }
+}
+
+' Normal Task Flow (Non-blocking on Main Thread)
+Client --> Looper : "1: post(lambda)"
+Looper --> MQ : "2: enqueueFunction(lambda)"
+Looper --> MQ : "3: pollNext()"
+Looper --> Client : "4: execute lambda callback"
+
+@enduml
+
+
+
+@startuml
+'title "SW Task Framework - postWork() for Heavy Tasks (Worker Thread)"
+
+rectangle "Client\nApplication" as Client
+
+package "SW Task Framework" #LightBlue {
+    
+    package "Main Thread" {
+        rectangle "SLLooper\n(Main Thread Event Loop)" as Looper
+    }
+    
+    package "CPU-bound Task" {
+        rectangle "CpuTaskExecutor" as CpuExec
+        rectangle "CPU-bound Task Thread" as WorkerThread <<Thread>>
+    }
+    
+    package "Async Helper" {
+        rectangle "Promise" as Promise
+        rectangle "State" as State
+    }
+}
+
+' Heavy Task Flow (Isolated Worker Thread)
+Client --> Looper : "1: postWork(heavyTask)"
+Looper --> CpuExec : "2: executeAsync(heavyTask)"
+CpuExec --> Promise : "3: create Promise<T>()"
+Promise --> State : "4: create State<T>()"
+CpuExec --> WorkerThread : "5: execute on worker thread"
+WorkerThread --> State : "6: setValue(result)"
+State --> Looper : "7: post continuation"
+Looper --> Client : "8: invoke callback"
+
+@enduml
+
+
+@startuml
+'title "SW Task Framework - postWork() Sequence Diagram"
+autonumber
+participant "Client" as Client
+
+box "SW Task Framework" #LightBlue
+    participant "SLLooper\n(Main Thread)" as Looper
+    participant "CPU-bound Task Thread" as CPUThread
+end box
+
+== Heavy Task Processing ==
+
+Client -> Looper : postWork(heavyTask)
+activate Looper
+note right of Client : Request heavy computation
+
+Looper ->> CPUThread : execute heavyTask
+activate CPUThread
+note right of Looper : Delegate to CPU-bound task thread\n(asynchronous call)
+
+Looper --> Client : return Promise<T>
+deactivate Looper
+'note left of Client : Get Promise immediately\nMain thread not blocked
+
+CPUThread -> CPUThread : process heavy computation
+'note right of CPUThread : CPU-intensive work\nisolated from main thread
+
+CPUThread ->> Looper : send result back
+activate Looper
+'note left of CPUThread : Task completed\n(asynchronous notification)
+
+Looper -> Client : invoke callback(result)
+'note right of Looper : Callback executed\non main thread
+
+deactivate CPUThread
+deactivate Looper
+
+note over Client, CPUThread : Main event loop thread never blocks,\nHeavy work isolated on CPU-bound task thread
+
+@enduml
+
+
+@startuml
+'title "SW Task Framework - post() Sequence Diagram"
+autonumber
+participant "Client" as Client
+
+box "SW Task Framework" #LightBlue
+    participant "SLLooper\n(Main Thread)" as Looper
+    participant "EventQueue" as MQ
+end box
+
+== Normal Task Processing ==
+
+Client -> Looper : post(lambda)
+activate Looper
+note right of Client : Request normal task execution
+
+Looper -> MQ : enqueueFunction(lambda)
+activate MQ
+'note right of Looper : Queue task for execution\n(synchronous call)
+
+MQ --> Looper : return future<T>
+deactivate MQ
+
+Looper --> Client : return future<T>
+deactivate Looper
+'note left of Client : Get future immediately\nMain thread not blocked
+
+...Event Loop Processing...
+
+Looper -> MQ : pollNext()
+activate Looper
+activate MQ
+note right of Looper : Poll for next task
+
+MQ --> Looper : return QueueItem(lambda)
+deactivate MQ
+
+Looper -> Looper : execute lambda
+'note right of Looper : Execute task on\nmain thread
+
+Looper ->> Client : invoke callback(result)
+'note right of Looper : Callback executed\non main thread\n(asynchronous notification)
+
+deactivate Looper
+
+@enduml
+
+
+
+
+
+
+
+@startuml
+'title "SW Task Framework - postWork() for CPU Heavy Computations (Isolated Worker Thread)"
+
+autonumber
+
+participant "Client Application" as Client
+
+box "SW Task Framework" #LightBlue
+    participant "SLLooper\n(Event Loop)" as Looper
+    participant "Promise<T>" as Promise
+    participant "State<T>" as State
+    participant "CpuTaskExecutor" as CpuExec
+    participant "CPU-bound Task Thread" as WorkerThread
+end box
+
+== Handle heavy task  ==
+Client -> Looper : postWork(heavyTask)
+activate Looper
+'note right of Client : Heavy computation\nisolated from UI
+
+Looper -> CpuExec : executeAsync(looper, heavyTask)
+activate CpuExec
+
+CpuExec -> Promise : create Promise<T>()
+activate Promise
+Promise -> State : create State<T>(looper)
+activate State
+State --> Promise : return
+Promise --> CpuExec : return Promise<T>
+
+CpuExec ->> WorkerThread : execute heavyTask
+'note right of WorkerThread : CPU-intensive work\non dedicated thread
+activate WorkerThread
+
+CpuExec --> Looper : return Promise<T>
+deactivate CpuExec
+Looper --> Client : return Promise<T>
+deactivate Looper
+
+'note over Client : Client gets Promise immediately\nMain thread never blocks
+
+WorkerThread -> WorkerThread : process heavy computation
+'note right of WorkerThread : Isolated CPU work\nPrevents UI blocking
+
+WorkerThread -> State : setValue(result)
+activate State
+'note right of State : Cross-thread\ncommunication
+
+State ->> Looper : post continuation to main thread
+'note right of Looper : Result delivery\nback to main thread
+
+deactivate WorkerThread
+
+Looper -> State : executeContinuation(result)
+activate Looper
+State -> Client : invoke callback with result
+activate Client
+'note right of Client : Callback executed\non main thread
+Client --> State : processing complete
+deactivate Client
+deactivate State
+deactivate Promise
+deactivate Looper
+
+'note over Client, WorkerThread : Clean separation: UI thread never blocks,\nCPU work isolated on worker thread
+
+@enduml
+
+
+
+
+
