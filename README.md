@@ -47,7 +47,7 @@ SW Task Framework is a modern event loop framework designed to efficiently and s
 
 ### System Overview
 
-<img src="doc/design/sw_task/system_overview.png" alt="System Overview" width="700"/>
+<img src="system_overview.png" alt="System Overview" width="700"/>
 
 ### Thread Model
 
