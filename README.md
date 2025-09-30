@@ -72,7 +72,7 @@ Main Thread              Event Loop Thread           CPU-bound Task thread
 | Category           | API Name                                 | Description                                                        |
 |--------------------|------------------------------------------|--------------------------------------------------------------------|
 | Function Posting   | `post(func, args...)`                    | Post task to event loop, returns `std::future`                     |
-|                    | `postDelayed(delayMs, func, args...)`(https://taikt.github.io/sw_task/classswt_1_1SLLooper.html#a49498e5f8dc94c812bae2fda76ad2b37)    | Post delayed task, returns `std::future`                           |
+|                    | [`postDelayed(delayMs, func, args...)`](https://taikt.github.io/sw_task/classswt_1_1SLLooper.html#a49498e5f8dc94c812bae2fda76ad2b37)    | Post delayed task, returns `std::future`                           |
 |                    | `postWithTimeout(func, timeout_ms)`      | Post task with timeout, returns `Timer`                            |
 | Promise            | `createPromise<T>()`                     | Create manual promise                                              |
 |                    | `postWork(func)`                         | Run CPU-bound task, returns `Promise`                              |
