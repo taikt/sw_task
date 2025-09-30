@@ -1,4 +1,3 @@
-
 # SW Task Framework
 
 [![Build Status](https://github.com/taikt/sw_task/actions/workflows/build.yml/badge.svg)](https://github.com/taikt/sw_task/actions/workflows/build.yml)
@@ -8,7 +7,7 @@
 
 **Advanced C++ Event Loop Framework for High-Performance Asynchronous Task Management**
 
-SW Task Framework là một event loop framework hiện đại được thiết kế để quản lý tác vụ bất đồng bộ một cách hiệu quả và an toàn. Framework cung cấp một kiến trúc linh hoạt cho việc xử lý messages, timers, promises và CPU-bound operations trong các ứng dụng C++ đa luồng.
+SW Task Framework is a modern event loop framework designed to efficiently and safely manage asynchronous tasks. The framework provides a flexible architecture for handling messages, timers, promises, and CPU-bound operations in multi-threaded C++ applications.
 
 ## Table of Contents
 
@@ -622,6 +621,7 @@ SOFTWARE.
 ---
 
 **Author**: Tran Anh Tai  
-**Email**: taikt@example.com  
+**Email**: tai2.tran@lge.com | taitrananhvn@gmail.com  
 **GitHub**: [@taikt](https://github.com/taikt)  
+**Repository**: [https://github.com/taikt/sw_task](https://github.com/taikt/sw_task)  
 **Documentation**: [https://taikt.github.io/sw_task/](https://taikt.github.io/sw_task/)
