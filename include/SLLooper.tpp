@@ -11,7 +11,8 @@
  #include "EventQueue.h"
  #include "Promise.h"
  #include "CpuTaskExecutor.h"
- 
+
+ namespace swt {
  // ========== DEBUG MACROS FOR CPU-BOUND DETECTION ==========
  
  /**
@@ -229,7 +230,7 @@
  /**
   * @brief Create a new promise object for manual result setting
   * @tparam T Value type for the promise
-  * @return kt::Promise<T> New promise object
+  * @return swt::Promise<T> New promise object
   * 
   * Creates a new promise object that can be resolved manually from any thread.
   * The promise callbacks will execute in this SLLooper's thread context when
@@ -259,10 +260,10 @@
   * @note Each promise can only be resolved once
   */
  template<typename T>
- kt::Promise<T> SLLooper::createPromise() {
+ swt::Promise<T> SLLooper::createPromise() {
      // Direct Promise creation - callbacks will use this looper's context
      // when promise.then(shared_from_this(), callback) is called
-     return kt::Promise<T>{};
+     return swt::Promise<T>{};
  }
  
  // ========== CPU-BOUND TASK API IMPLEMENTATIONS ==========
@@ -271,7 +272,7 @@
   * @brief Execute CPU-intensive task asynchronously
   * @tparam Func Function type (auto-deduced)
   * @param func CPU-intensive function to execute
-  * @return kt::Promise<ReturnType> Promise for result retrieval and chaining
+  * @return swt::Promise<ReturnType> Promise for result retrieval and chaining
   * 
   * Delegates CPU-bound task execution to CpuTaskExecutor, which handles
   * separate thread execution and result delivery back to this event loop.
@@ -303,8 +304,8 @@
   * @note Preferred over regular post() for CPU-intensive operations
   */
  template<typename Func>
- auto SLLooper::postWork(Func&& func) -> kt::Promise<decltype(func())> {
-     return kt::CpuTaskExecutor::executeAsync(shared_from_this(), std::forward<Func>(func));
+ auto SLLooper::postWork(Func&& func) -> swt::Promise<decltype(func())> {
+     return swt::CpuTaskExecutor::executeAsync(shared_from_this(), std::forward<Func>(func));
  }
  
  /**
@@ -312,7 +313,7 @@
   * @tparam Func Function type (auto-deduced)
   * @param func CPU-intensive function to execute
   * @param timeout Maximum execution time
-  * @return kt::Promise<ReturnType> Promise for result retrieval
+  * @return swt::Promise<ReturnType> Promise for result retrieval
   * 
   * Delegates CPU-bound task execution with timeout protection to CpuTaskExecutor.
   * If the task doesn't complete within the timeout, the promise is rejected
@@ -328,7 +329,7 @@
   * }).catch_error(shared_from_this(), [](std::exception_ptr ex) {
   *     try {
   *         std::rethrow_exception(ex);
-  *     } catch (const kt::CpuTaskTimeoutException& timeout) {
+  *     } catch (const swt::CpuTaskTimeoutException& timeout) {
   *         std::cerr << "Task timed out!" << std::endl;
   *     }
   * });
@@ -339,8 +340,8 @@
   */
  template<typename Func>
  auto SLLooper::postWork(Func&& func, std::chrono::milliseconds timeout) 
-     -> kt::Promise<decltype(func())> {
-     return kt::CpuTaskExecutor::executeAsync(shared_from_this(), std::forward<Func>(func), timeout);
+     -> swt::Promise<decltype(func())> {
+     return swt::CpuTaskExecutor::executeAsync(shared_from_this(), std::forward<Func>(func), timeout);
  }
  
  // ========== TIMER API IMPLEMENTATIONS (Chrono Support) ==========
@@ -482,3 +483,5 @@
          func();
      }, timeout_ms);
  }
+ 
+} // namespace swt

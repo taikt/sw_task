@@ -2,6 +2,7 @@
 #include <iostream>
 #include <string>
 using namespace std;
+using namespace swt;
 #pragma once
 
 #define TEST1 1

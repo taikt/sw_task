@@ -7,7 +7,9 @@
 #include "EventQueue.h"
 #include "SLLooper.h"
 
-class Handler : public std::enable_shared_from_this<Handler>  // ✅ ADD THIS
+namespace swt {
+
+class Handler : public std::enable_shared_from_this<Handler>  
 {
 public:
     Handler();
@@ -44,3 +46,4 @@ private:
 };
 
 #endif // HANDLER_H
+} // namespace swt

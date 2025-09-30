@@ -11,6 +11,7 @@
  #include <cstdint>
  #include <memory>
  
+ namespace swt {
  /**
   * @class Buffer
   * @brief Dynamic byte buffer for data storage and manipulation
@@ -371,3 +372,4 @@
       */
      bool mClear;
  };
+}

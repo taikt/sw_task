@@ -12,7 +12,7 @@
  #include "Promise.h"
  #include "State.h"
  
- namespace kt {
+ namespace swt {
  
  // ========== Template implementation for Promise<tValue> ==========
  
@@ -276,6 +276,6 @@
      return nextPromise;
  }
  
- } // namespace kt
+ } // namespace swt
  
  #endif // PROMISE_TPP

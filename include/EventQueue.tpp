@@ -9,6 +9,7 @@
  #pragma once
  #include "EventQueue.h" 
  
+ namespace swt {
  /**
   * @brief Enqueue function for immediate asynchronous execution
   * @tparam F Function type (auto-deduced)
@@ -166,3 +167,10 @@
      
      return future;
  }
+
+template<typename T>
+Promise<T> EventQueue::enqueuePromise() {
+     return Promise<T>();
+}
+
+} // namespace swt

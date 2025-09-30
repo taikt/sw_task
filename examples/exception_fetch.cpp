@@ -20,9 +20,10 @@ Những lỗi này sẽ làm chương trình dừng ngay lập tức, không tru
 #include <thread>
 #include <chrono>
 #include <stdexcept>
+using namespace swt;
 
 // Hàm trả về Promise<int>, có thể ném exception
-kt::Promise<int> fetchWithError(std::shared_ptr<SLLooper> looper, bool shouldThrow) {
+Promise<int> fetchWithError(std::shared_ptr<SLLooper> looper, bool shouldThrow) {
     auto promise = looper->createPromise<int>();
     looper->post([promise, shouldThrow]() mutable {
         std::cout << "Start fetching..." << std::endl;

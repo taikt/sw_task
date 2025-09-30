@@ -3,6 +3,7 @@
 #include <chrono>
 
 using namespace std::chrono_literals;
+using namespace swt;
 
 int main() {
     auto looper = std::make_shared<SLLooper>();

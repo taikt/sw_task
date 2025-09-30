@@ -12,8 +12,10 @@
  #include <functional>
  #include <atomic>
  
- class SLLooper;
  
+
+ namespace swt {
+    class SLLooper;
  /**
   * @typedef TimerId
   * @brief Unique identifier type for timer instances
@@ -235,3 +237,5 @@
       */
      void moveFrom(Timer&& other) noexcept;
  };
+
+} // namespace swt

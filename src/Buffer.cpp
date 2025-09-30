@@ -11,6 +11,7 @@
  #include <iostream>
  #include <iomanip>
  
+ namespace swt {
  /**
   * @brief Default constructor - creates empty buffer
   * 
@@ -265,3 +266,5 @@
  void Buffer::_release() {
      clear();
  }
+
+} // namespace swt

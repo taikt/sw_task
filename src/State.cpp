@@ -1,7 +1,7 @@
 #include "State.h"
 #include "SLLooper.h"
 
-namespace kt {
+namespace swt {
 
 // Specialization implementations for State<std::monostate>
 void State<std::monostate>::setValue(std::monostate &&value) {
@@ -38,4 +38,4 @@ void State<std::monostate>::executeErrorHandler(std::exception_ptr exception) {
     }
 }
 
-}
+} // namespace swt

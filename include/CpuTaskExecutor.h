@@ -15,12 +15,13 @@
  #include <type_traits>
  
  // Forward declarations only
- namespace kt {
-     template<typename T> class Promise;
+ namespace swt {
+    class SLLooper;
+    template<typename T> class Promise;
  }
- class SLLooper;
  
- namespace kt {
+ 
+ namespace swt {
  
  /**
   * @class CpuTaskTimeoutException
@@ -265,7 +266,7 @@
      CpuTaskExecutor& operator=(const CpuTaskExecutor&) = delete;
  };
  
- } // namespace kt
+ } // namespace 
  
  // Include template implementations
  #include "CpuTaskExecutor.tpp"

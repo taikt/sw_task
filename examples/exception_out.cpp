@@ -21,8 +21,9 @@ Những lỗi này sẽ làm chương trình dừng ngay lập tức, không tru
 #include <chrono>
 #include <vector>
 #include <stdexcept>
+using namespace swt;
 
-kt::Promise<int> fetchData(std::shared_ptr<SLLooper> looper) {
+Promise<int> fetchData(std::shared_ptr<SLLooper> looper) {
     auto promise = looper->createPromise<int>();
     looper->post([promise]() mutable {
         std::cout << "Start fetching..." << std::endl;

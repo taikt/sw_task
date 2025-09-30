@@ -5,6 +5,7 @@
 #include <thread>
 #include <chrono>
 #include <string>
+using namespace swt;
 
 class Processor {
 public:
@@ -22,7 +23,7 @@ public:
     }
 };
 
-kt::Promise<int> fetchData(std::shared_ptr<SLLooper> looper) {
+Promise<int> fetchData(std::shared_ptr<SLLooper> looper) {
     auto promise = looper->createPromise<int>();
     looper->post([promise]() mutable {
         std::cout << "Fetching data..." << std::endl;

@@ -206,3 +206,4 @@ DOT_CLEANUP            = YES
 DOT_MULTI_TARGETS      = YES
 DOT_UML_DETAILS        = NO
 DOT_INCLUDE_TAGS       = YES
+IMAGE_PATH = doc/design/sw_task

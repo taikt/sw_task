@@ -4,6 +4,9 @@
 #include <memory>
 #include <cstdint>
 #include "Refbase.h"
+
+namespace swt {
+
 class Handler;
 
 class Message : public std::enable_shared_from_this<Message>
@@ -73,5 +76,7 @@ private:
     friend class EventQueue;
     friend class SLLooper;
 };
+
+} // namespace swt
 
 #endif // MESSAGE_H

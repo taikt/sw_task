@@ -17,12 +17,9 @@
  #include <exception>
  #include "Log.h"
  
- using namespace std;
- 
- // Forward declaration
- class SLLooper;
- 
- namespace kt {
+ namespace swt {
+    // Forward declaration
+    class SLLooper;
  
  /**
   * @class State
@@ -306,7 +303,7 @@
      std::shared_ptr<SLLooper> m_errorLooper;                /**< SLLooper for error handler execution */
  };
  
- } // namespace kt
+ } // namespace swt
  
  // Include template implementations
  #include "State.tpp"

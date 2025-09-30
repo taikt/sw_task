@@ -16,14 +16,14 @@
  #include <exception>
  #include "Log.h"
  
+
+
  // Forward declarations
- class SLLooper;
+
  
- namespace kt {
-     template <typename tValue> class State;
- }
- 
- namespace kt {
+ namespace swt {
+    class SLLooper;
+    template <typename tValue> class State;
  
  /**
   * @class Promise
@@ -356,7 +356,7 @@
      std::shared_ptr<State<std::monostate>> m_state;  /**< Shared state using monostate for void semantics */
  };
  
- } // namespace kt
+ } // namespace swt
  
  // Include template implementations
  #include "Promise.tpp"

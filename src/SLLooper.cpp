@@ -21,6 +21,8 @@
  
  using namespace std;
  
+ namespace swt {
+
  /**
   * @brief Constructor - initializes event loop and starts main thread
   * 
@@ -412,3 +414,5 @@
      size_t count = mTimerManager->getActiveTimerCount();
      return count;
  }
+
+} // namespace swt

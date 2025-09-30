@@ -20,9 +20,11 @@
  #include <mutex>
  #include <stdexcept>
  
- class SLLooper;
- class TimerManager;
  
+ 
+ namespace swt {
+    class SLLooper;
+    class TimerManager;
  /**
   * @class TimerManager
   * @brief Linux-specific timer management using timerfd and epoll for high performance
@@ -244,3 +246,5 @@
       */
      void updateTimerFd(int fd, uint64_t delay_ms, bool periodic);
  };
+
+} // namespace swt

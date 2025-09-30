@@ -14,7 +14,7 @@
  #include <future>
  #include <string>
  
- namespace kt {
+ namespace swt {
  
  /**
   * @brief Execute CPU-bound task asynchronously without timeout
@@ -218,4 +218,4 @@
      return promise;
  }
  
- } // namespace kt
+ } // namespace swt

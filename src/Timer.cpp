@@ -2,6 +2,8 @@
 #include "SLLooper.h"
 #include <iostream>
 
+namespace swt {
+
 Timer::Timer(TimerId id, std::weak_ptr<SLLooper> looper)
     : mId(id), mLooper(looper), mCancelled(false), mMoved(false) {
     // std::cout << "[Timer] Created timer " << mId << std::endl;
@@ -96,3 +98,5 @@ void Timer::restart(uint64_t delay_ms) {
         }
     }
 }
+
+} // namespace swt

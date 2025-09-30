@@ -14,13 +14,13 @@
  #include <chrono> 
  #include <type_traits> 
  #include "Timer.h"
+ #include "EventQueue.h"
  
- // Forward declarations only
- class EventQueue;
- class TimerManager;
- namespace kt {
-     template<typename T> class Promise;
- }
+
+
+ namespace swt {
+    class TimerManager;
+    template<typename T> class Promise;
  
  /**
   * @class SLLooper
@@ -240,7 +240,7 @@
      /**
       * @brief Create a new promise object for manual result setting
       * @tparam T Value type for the promise
-      * @return kt::Promise<T> New promise object
+      * @return swt::Promise<T> New promise object
       * 
       * Creates a new promise object that can be resolved manually from any thread.
       * Useful for integrating with callback-based APIs or complex async workflows.
@@ -264,7 +264,7 @@
       * @see Promise, Future
       */
      template<typename T>
-     kt::Promise<T> createPromise();
+     swt::Promise<T> createPromise();
      
      // ========== CPU-BOUND TASK API ==========
      
@@ -272,7 +272,7 @@
       * @brief Execute CPU-intensive task asynchronously
       * @tparam Func Function type (auto-deduced)
       * @param func CPU-intensive function to execute
-      * @return kt::Promise<ReturnType> Promise for result retrieval and chaining
+      * @return swt::Promise<ReturnType> Promise for result retrieval and chaining
       * 
       * Executes CPU-intensive tasks using a dedicated thread pool to avoid
       * blocking the main event loop. Returns a promise for result handling
@@ -296,14 +296,14 @@
       * @see CpuTaskExecutor, Promise
       */
      template<typename Func>
-     auto postWork(Func&& func) -> kt::Promise<decltype(func())>;
+     auto postWork(Func&& func) -> swt::Promise<decltype(func())>;
      
      /**
       * @brief Execute CPU-intensive task with timeout
       * @tparam Func Function type (auto-deduced)
       * @param func CPU-intensive function to execute
       * @param timeout Maximum execution time
-      * @return kt::Promise<ReturnType> Promise for result retrieval
+      * @return swt::Promise<ReturnType> Promise for result retrieval
       * 
       * Executes CPU-intensive tasks with a timeout limit. If the task
       * doesn't complete within the timeout, the promise is rejected
@@ -325,7 +325,7 @@
       */
      template<typename Func>
      auto postWork(Func&& func, std::chrono::milliseconds timeout) 
-         -> kt::Promise<decltype(func())>;
+         -> swt::Promise<decltype(func())>;
      
      /**
       * @brief Run one iteration of the event loop
@@ -561,6 +561,7 @@
      std::thread t1;                                  /**< Main event loop thread */
      std::unique_ptr<TimerManager> mTimerManager;     /**< Timer management (lazy initialization) */
  };
+} // namespace swt
  
  // Include template implementations
  #include "SLLooper.tpp"

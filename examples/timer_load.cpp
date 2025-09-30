@@ -12,6 +12,7 @@
 #include <algorithm>
 
 using namespace std::chrono_literals;
+using namespace swt;
 
 class TimerLoadTest {
 private:

@@ -13,10 +13,9 @@ SW Task Framework is a modern event loop framework designed to efficiently and s
 
 - [Features](#features)
 - [Architecture](#architecture)
-- [Quick Start](#quick-start)
-- [API Documentation](#api-documentation)
-- [Building](#building)
+- [API Overview](#api-overview)
 - [Examples](#examples)
+- [Building](#building)
 - [Testing](#testing)
 - [Performance](#performance)
 - [Contributing](#contributing)
@@ -26,22 +25,21 @@ SW Task Framework is a modern event loop framework designed to efficiently and s
 
 ### Core Components
 
-| Component | Description | Key Features |
-|-----------|-------------|--------------|
-| **SLLooper** | Main event loop coordinator | Thread-safe posting, chrono support, debug detection |
-| **EventQueue** | High-performance message queue | Priority handling, delayed execution, function templates |
-| **TimerManager** | Precise timer management | One-shot & periodic timers, microsecond precision |
-| **Promise System** | Modern async/await pattern | Chainable continuations, error handling, thread-safe |
-| **Handler Pattern** | Message-based communication | Android-style messaging, flexible dispatching |
-| **CPU Task Executor** | CPU-bound task isolation | Thread pool execution, timeout protection |
+| Component           | Description                        | Key Features                                    |
+|---------------------|------------------------------------|-------------------------------------------------|
+| **SLLooper**        | Main event loop coordinator        | Thread-safe posting                             |
+| **EventQueue**      | High-performance Event queue       | Priority handling, delayed execution, templates  |
+| **TimerManager**    | Precise timer management           | One-shot & periodic timers, microsecond precision|
+| **Promise System**  | Modern async pattern (JS A+)       | Chainable continuations, error handling         |
+| **Handler Pattern** | Message-based communication        | Android-style messaging, flexible dispatching    |
+| **CPU Task Executor** | CPU-bound task isolation         | Timeout protection                              |
 
 ### Advanced Features
 
-- **Asynchronous Task Management**: Post functions with futures, delayed execution, promise-based workflows
+- **Asynchronous Task Management**: Post functions with futures, delayed execution, promise-based workflows following JavaScript/A+ standard
 - **High-Precision Timers**: Microsecond accuracy, chrono duration support, RAII timer management
 - **Thread-Safe Operations**: Lock-free queues, atomic operations, safe cross-thread communication
-- **CPU-Bound Task Isolation**: Separate thread pool for intensive operations, prevents event loop blocking
-- **Debug & Monitoring**: CPU-bound task detection, performance metrics, comprehensive logging
+- **CPU-Bound Task Isolation**: Separate CPU-bound task thread for intensive operations, prevents event loop blocking
 - **Android-Style Messaging**: Familiar Handler/Message pattern for structured communication
 - **Modern C++ Design**: C++17 features, RAII principles, smart pointer management
 
@@ -49,256 +47,228 @@ SW Task Framework is a modern event loop framework designed to efficiently and s
 
 ### System Overview
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        SW Task Framework                        │
-├─────────────────────────────────────────────────────────────────┤
-│  User API Layer                                                │
-│  ┌─────────────┐ ┌──────────────┐ ┌─────────────┐              │
-│  │   SLLooper  │ │   Handler    │ │   Promise   │              │
-│  │             │ │              │ │             │              │
-│  │ • post()    │ │ • sendMsg()  │ │ • then()    │              │
-│  │ • addTimer()│ │ • handleMsg()│ │ • catch()   │              │
-│  │ • postWork()│ │ • obtain()   │ │ • resolve() │              │
-│  └─────────────┘ └──────────────┘ └─────────────┘              │
-├─────────────────────────────────────────────────────────────────┤
-│  Core Engine Layer                                             │
-│  ┌─────────────┐ ┌──────────────┐ ┌─────────────┐              │
-│  │ EventQueue  │ │ TimerManager │ │CpuTaskExec  │              │
-│  │             │ │              │ │             │              │
-│  │ • Priority  │ │ • Precision  │ │ • ThreadPool│              │
-│  │ • Delayed   │ │ • Periodic   │ │ • Timeout   │              │
-│  │ • Lock-free │ │ • RAII       │ │ • Isolation │              │
-│  └─────────────┘ └──────────────┘ └─────────────┘              │
-├─────────────────────────────────────────────────────────────────┤
-│  Platform Layer                                                │
-│  ┌─────────────┐ ┌──────────────┐ ┌─────────────┐              │
-│  │   Threads   │ │    Timing    │ │   Memory    │              │
-│  │             │ │              │ │             │              │
-│  │ • std::thread│ │ • chrono     │ │ • RAII      │              │
-│  │ • atomics   │ │ • steady_clock│ │ • shared_ptr│              │
-│  │ • futures   │ │ • high_res   │ │ • weak_ptr  │              │
-│  └─────────────┘ └──────────────┘ └─────────────┘              │
-└─────────────────────────────────────────────────────────────────┘
-```
+<img src="system_overview.png" alt="System Overview" width="700"/>
 
 ### Thread Model
 
 ```
-Main Thread              Event Loop Thread           Worker Threads
+Main Thread              Event Loop Thread           CPU-bound Task thread
      │                          │                           │
-     │ post(function)          │                           │
+     │ post(normal_task)        │                           │
      ├─────────────────────────►│                           │
      │                          │ process tasks             │
-     │                          │                           │
-     │ postWork(cpu_task)      │                           │
-     ├─────────────────────────►│ delegate                  │
-     │                          ├──────────────────────────►│
+     │ postWork(heavy_task)     │ delegate                  │
+     ├─────────────────────────►│ ─────────────────────────►│
      │                          │                           │ execute
-     │                          │                           │ cpu_task
      │                          │◄──────────────────────────┤
      │◄─────────────────────────┤ result via promise        │
-     │ promise.then()          │                           │
+     │ promise.then()           │                           │
 ```
 
-## Quick Start
+## API Overview
 
-### Basic Example
+### 1. Function Posting & Promise
 
+| Category           | API Name                                 | Description                                                        |
+|--------------------|------------------------------------------|--------------------------------------------------------------------|
+| Function Posting   | `post(func, args...)`                    | Post task to event loop, returns `std::future`                     |
+|                    | `postDelayed(delayMs, func, args...)`    | Post delayed task, returns `std::future`                           |
+|                    | `postWithTimeout(func, timeout_ms)`      | Post task with timeout, returns `Timer`                            |
+| Promise            | `createPromise<T>()`                     | Create manual promise                                              |
+|                    | `postWork(func)`                         | Run CPU-bound task, returns `Promise`                              |
+|                    | `postWork(func, timeout)`                | Run CPU-bound task with timeout                                    |
+|                    | `Promise::set_value(value)`              | Fulfill promise                                                    |
+|                    | `Promise::then(callback)`                | Chain callback on success                                          |
+|                    | `Promise::catchError(callback)`          | Chain error handler                                                |
+
+---
+
+### 2. Timer & Timer Control
+
+| Category      | API Name                        | Description                                 |
+|---------------|---------------------------------|---------------------------------------------|
+| Timer         | `addTimer(cb, delay)`           | One-shot timer                              |
+|               | `addPeriodicTimer(cb, interval)`| Periodic timer                              |
+| Timer Control | `Timer::cancel()`               | Cancel timer                                |
+|               | `Timer::isActive()`             | Check if timer is active                    |
+|               | `Timer::restart(delay)`         | Restart timer                               |
+
+---
+
+### 3. Message & Handler
+
+| Category           | API Name                                 | Description                                |
+|--------------------|------------------------------------------|--------------------------------------------|
+| Message Creation   | `obtainMessage()`                        | Create empty message                       |
+|                    | `obtainMessage(what, ...)`               | Create message with code/args              |
+| Message Sending    | `sendMessage(msg)`                       | Send message immediately                   |
+|                    | `sendMessageDelayed(msg, delay)`         | Send message after delay                   |
+| Message Management | `hasMessages(what)`                      | Check if messages exist                    |
+|                    | `removeMessages(what)`                   | Remove messages                            |
+| Processing         | `dispatchMessage(msg)`                   | Dispatch to handler                        |
+|                    | `handleMessage(msg)`                     | Override to process message                |
+
+---
+
+## Examples
+
+### 1. Function Posting & Promise
+
+**Chained asynchronous workflow with error handling:**
 ```cpp
 #include "SLLooper.h"
 #include <iostream>
-#include <chrono>
+#include <stdexcept>
+#include <thread>
 
-using namespace std::chrono_literals;
+int computeHeavy(int x) {
+    if (x < 0) throw std::runtime_error("Negative input!");
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    return x * x;
+}
 
 int main() {
-    // Create event loop
     auto looper = std::make_shared<SLLooper>();
-    
-    // Post simple task
-    auto future = looper->post([]() {
-        std::cout << "Hello from event loop!" << std::endl;
-        return 42;
+
+    looper->postWork([] { return 10; })
+    .then(looper, [looper](int v) {
+        std::cout << "First result: " << v << std::endl;
+        return looper->postWork([v] { return computeHeavy(v); });
+    })
+    .then(looper, [](int squared) {
+        std::cout << "Squared: " << squared << std::endl;
+        return squared / 2;
+    })
+    .catchError(looper, [](std::exception_ptr ex) {
+        try { if (ex) std::rethrow_exception(ex); }
+        catch (const std::exception& e) {
+            std::cout << "Error: " << e.what() << std::endl;
+        }
+        return -1;
+    })
+    .then(looper, [](int final) {
+        std::cout << "Final result: " << final << std::endl;
+        return 0;
     });
-    
-    // Get result
-    std::cout << "Result: " << future.get() << std::endl;
-    
-    // Add timer
-    auto timer = looper->addTimer([]() {
-        std::cout << "Timer fired!" << std::endl;
-    }, 1000ms);
-    
-    // CPU-intensive task
-    auto promise = looper->postWork([]() {
-        // Heavy computation in separate thread
-        return calculatePrimes(1000000);
-    });
-    
-    promise.then(looper, [](auto result) {
-        std::cout << "Computation result: " << result << std::endl;
-    });
-    
-    // Keep running
-    std::this_thread::sleep_for(5s);
-    
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
     return 0;
 }
 ```
 
-### Handler Pattern Example
+---
 
+### 2. Timer & Timer Control
+
+**Periodic timer with dynamic restart and cancellation:**
 ```cpp
+#include "SLLooper.h"
+#include <iostream>
+#include <atomic>
+#include <thread>
+
+int main() {
+    auto looper = std::make_shared<SLLooper>();
+    std::atomic<int> count{0};
+
+    auto timer = looper->addPeriodicTimer([&]() {
+        std::cout << "Tick: " << ++count << std::endl;
+        if (count == 3) {
+            std::cout << "Restarting timer with new interval..." << std::endl;
+            timer.restart(200);
+        }
+        if (count == 6) {
+            std::cout << "Cancelling timer." << std::endl;
+            timer.cancel();
+        }
+    }, 100);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(1500));
+    return 0;
+}
+```
+
+---
+
+### 3. Message & Handler
+
+**Custom handler with message dispatch and delayed messaging:**
+```cpp
+#include "SLLooper.h"
+#include "Handler.h"
+#include <iostream>
+#include <memory>
+#include <thread>
+
 class MyHandler : public Handler {
 public:
-    MyHandler(std::shared_ptr<SLLooper>& looper) : Handler(looper) {}
-    
+    MyHandler(std::shared_ptr<SLLooper> looper) : Handler(looper) {}
     void handleMessage(const std::shared_ptr<Message>& msg) override {
-        switch (msg->what) {
-            case MSG_UPDATE_UI:
-                updateUI(msg->arg1, msg->arg2);
-                break;
-            case MSG_PROCESS_DATA:
-                processData(msg->obj);
-                break;
+        if (msg->what == 1) {
+            std::cout << "Process data: " << msg->arg1 << std::endl;
+        } else if (msg->what == 2) {
+            std::cout << "Delayed event: " << msg->arg2 << std::endl;
         }
     }
-    
-private:
-    enum { MSG_UPDATE_UI = 1, MSG_PROCESS_DATA = 2 };
 };
 
-// Usage
-auto handler = std::make_shared<MyHandler>(looper);
-auto message = handler->obtainMessage(MSG_UPDATE_UI, x, y);
-handler->sendMessageDelayed(message, 100ms);
-```
+int main() {
+    auto looper = std::make_shared<SLLooper>();
+    auto handler = std::make_shared<MyHandler>(looper);
 
-### Promise Chain Example
+    auto msg1 = handler->obtainMessage(1, 42, 0);
+    handler->sendMessage(msg1);
 
-```cpp
-auto promise = looper->createPromise<std::string>();
+    auto msg2 = handler->obtainMessage(2, 0, 99);
+    handler->sendMessageDelayed(msg2, 200);
 
-promise
-    .then(looper, [](const std::string& data) {
-        return processData(data);
-    })
-    .then(looper, [](const ProcessedData& result) {
-        return validateResult(result);
-    })
-    .catch_error(looper, [](std::exception_ptr ex) {
-        std::cerr << "Error in promise chain!" << std::endl;
-    });
-
-// Resolve from another thread
-std::thread([promise]() mutable {
-    std::this_thread::sleep_for(1s);
-    promise.set_value("Hello World");
-}).detach();
-```
-
-## API Documentation
-
-### SLLooper API
-
-#### Task Posting
-
-```cpp
-// Immediate execution
-auto future = looper->post([]() { return compute(); });
-auto result = future.get();
-
-// Delayed execution
-auto delayed_future = looper->postDelayed(500ms, []() {
-    return "Delayed result";
-});
-
-// CPU-bound tasks
-auto promise = looper->postWork([]() {
-    return heavyComputation();
-});
-
-promise.then(looper, [](auto result) {
-    handleResult(result);
-});
-```
-
-#### Timer Management
-
-```cpp
-// One-shot timer
-auto timer = looper->addTimer([]() {
-    std::cout << "Timer expired!" << std::endl;
-}, 1000ms);
-
-// Periodic timer
-auto periodic = looper->addPeriodicTimer([]() {
-    checkStatus();
-}, 100ms);
-
-// Timer control
-if (timer.isActive()) {
-    timer.cancel();
-}
-
-timer.restart(2000ms);
-```
-
-#### Promise System
-
-```cpp
-// Create promise
-auto promise = looper->createPromise<int>();
-
-// Chain operations
-promise
-    .then(looper, [](int value) {
-        return value * 2;
-    })
-    .then(looper, [](int doubled) {
-        std::cout << "Result: " << doubled << std::endl;
-    });
-
-// Resolve
-promise.set_value(21);  // Output: "Result: 42"
-```
-
-### Handler API
-
-#### Message Operations
-
-```cpp
-// Create messages
-auto msg1 = handler->obtainMessage();
-auto msg2 = handler->obtainMessage(MSG_TYPE);
-auto msg3 = handler->obtainMessage(MSG_TYPE, arg1, arg2);
-
-// Send messages
-handler->sendMessage(msg1);
-handler->sendMessageDelayed(msg2, 100ms);
-
-// Query messages
-if (handler->hasMessages(MSG_TYPE)) {
-    handler->removeMessages(MSG_TYPE);
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    return 0;
 }
 ```
 
-### Performance Considerations
+---
 
-#### CPU-Bound Task Detection
+### 4. Combined Example: Timer, Promise, and Handler
 
+**Workflow: Timer triggers a fetch, result is processed and sent to handler**
 ```cpp
-// Debug builds automatically detect tasks > 3ms
-looper->post([]() {
-    heavyOperation();  // Warning if > 3000ms
-});
+#include "SLLooper.h"
+#include "Handler.h"
+#include <iostream>
+#include <thread>
 
-// Use postWork() for CPU-intensive operations
-looper->postWork([]() {
-    return heavyOperation();  // Runs in separate thread
-});
+class ResultHandler : public Handler {
+public:
+    ResultHandler(std::shared_ptr<SLLooper> looper) : Handler(looper) {}
+    void handleMessage(const std::shared_ptr<Message>& msg) override {
+        std::cout << "Handler received: " << msg->arg1 << std::endl;
+    }
+};
+
+int fetchData() {
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    return 123;
+}
+
+int main() {
+    auto looper = std::make_shared<SLLooper>();
+    auto handler = std::make_shared<ResultHandler>(looper);
+
+    auto timer = looper->addTimer([looper, handler]() {
+        looper->postWork(fetchData)
+        .then(looper, [handler](int value) {
+            auto msg = handler->obtainMessage(1, value, 0);
+            handler->sendMessage(msg);
+        });
+    }, 200);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    return 0;
+}
 ```
+
+---
 
 ## Building
 
@@ -311,269 +281,39 @@ looper->postWork([]() {
 ### Build Instructions
 
 ```bash
-# Clone repository
 git clone https://github.com/taikt/sw_task.git
 cd sw_task
-
-# Create build directory
 mkdir build && cd build
-
-# Configure with CMake
 cmake ..
-
-# Build
 make -j$(nproc)
-
-# Run tests
 make test
-
-# Install (optional)
 sudo make install
 ```
 
-### CMake Integration
-
-```cmake
-# Find package
-find_package(SWTask REQUIRED)
-
-# Link to your target
-target_link_libraries(your_target SWTask::SWTask)
-```
-
-### Build Options
-
-```bash
-# Debug build with CPU-bound detection
-cmake -DCMAKE_BUILD_TYPE=Debug ..
-
-# Release build with optimizations
-cmake -DCMAKE_BUILD_TYPE=Release ..
-
-# Build with examples
-cmake -DBUILD_EXAMPLES=ON ..
-
-# Build with tests
-cmake -DBUILD_TESTS=ON ..
-
-# Generate documentation
-cmake -DBUILD_DOCS=ON ..
-make docs
-```
-
-## Examples
-
-### Example 1: Basic Task Posting
-
-```cpp
-// examples/basic_posting.cpp
-#include "SLLooper.h"
-
-int main() {
-    auto looper = std::make_shared<SLLooper>();
-    
-    // Post lambda
-    auto future1 = looper->post([]() {
-        return "Hello from lambda!";
-    });
-    
-    // Post function with arguments
-    auto future2 = looper->post([](int a, int b) {
-        return a + b;
-    }, 10, 20);
-    
-    std::cout << future1.get() << std::endl;  // "Hello from lambda!"
-    std::cout << future2.get() << std::endl;  // 30
-    
-    return 0;
-}
-```
-
-### Example 2: Timer Load Test
-
-```cpp
-// examples/timer_load.cpp
-#include "SLLooper.h"
-#include <vector>
-
-int main() {
-    auto looper = std::make_shared<SLLooper>();
-    std::vector<Timer> timers;
-    
-    // Create 1000 timers
-    for (int i = 0; i < 1000; ++i) {
-        timers.push_back(looper->addTimer([i]() {
-            std::cout << "Timer " << i << " fired!" << std::endl;
-        }, std::chrono::milliseconds(100 + i)));
-    }
-    
-    std::this_thread::sleep_for(std::chrono::seconds(5));
-    
-    // Timers automatically cancelled when destroyed
-    return 0;
-}
-```
-
-### Example 3: Producer-Consumer Pattern
-
-```cpp
-// examples/producer_consumer.cpp
-#include "SLLooper.h"
-#include <queue>
-#include <mutex>
-
-class ProducerConsumer {
-private:
-    std::shared_ptr<SLLooper> looper_;
-    std::queue<int> queue_;
-    std::mutex mutex_;
-    
-public:
-    ProducerConsumer() : looper_(std::make_shared<SLLooper>()) {}
-    
-    void produce(int value) {
-        looper_->post([this, value]() {
-            std::lock_guard<std::mutex> lock(mutex_);
-            queue_.push(value);
-            std::cout << "Produced: " << value << std::endl;
-        });
-    }
-    
-    void consume() {
-        looper_->post([this]() {
-            std::lock_guard<std::mutex> lock(mutex_);
-            if (!queue_.empty()) {
-                int value = queue_.front();
-                queue_.pop();
-                std::cout << "Consumed: " << value << std::endl;
-            }
-        });
-    }
-};
-```
+---
 
 ## Testing
-
-### Running Tests
 
 ```bash
 cd build
 make test
-
-# Verbose output
 ctest --verbose
-
-# Run specific test
-./tests/test_sllooper
 ```
 
-### Test Categories
-
-- **Unit Tests**: Individual component testing
-- **Integration Tests**: Component interaction testing
-- **Performance Tests**: Benchmarking and load testing
-- **Memory Tests**: Leak detection and memory usage
-- **Thread Safety Tests**: Concurrent operation validation
-
-### Writing Tests
-
-```cpp
-#include <gtest/gtest.h>
-#include "SLLooper.h"
-
-TEST(SLLooperTest, BasicPosting) {
-    auto looper = std::make_shared<SLLooper>();
-    
-    bool executed = false;
-    auto future = looper->post([&executed]() {
-        executed = true;
-        return 42;
-    });
-    
-    EXPECT_EQ(future.get(), 42);
-    EXPECT_TRUE(executed);
-}
-
-TEST(TimerTest, OneShot) {
-    auto looper = std::make_shared<SLLooper>();
-    
-    bool fired = false;
-    auto timer = looper->addTimer([&fired]() {
-        fired = true;
-    }, 10ms);
-    
-    std::this_thread::sleep_for(50ms);
-    EXPECT_TRUE(fired);
-}
-```
+---
 
 ## Performance
 
-### Benchmarks
+| Operation        | Throughput | Latency | Memory           |
+|------------------|------------|---------|------------------|
+| Task Posting     | 1M ops/sec | < 1μs   | 64 bytes/task    |
+| Timer Creation   | 100K/sec   | < 10μs  | 128 bytes/timer  |
+| Promise Chain    | 500K/sec   | < 5μs   | 256 bytes/chain  |
+| Message Send     | 2M ops/sec | < 0.5μs | 32 bytes/msg     |
 
-| Operation | Throughput | Latency | Memory |
-|-----------|------------|---------|---------|
-| Task Posting | 1M ops/sec | < 1μs | 64 bytes/task |
-| Timer Creation | 100K/sec | < 10μs | 128 bytes/timer |
-| Promise Chain | 500K/sec | < 5μs | 256 bytes/chain |
-| Message Send | 2M ops/sec | < 0.5μs | 32 bytes/msg |
-
-### Performance Tips
-
-1. **Use postWork() for CPU-intensive tasks**
-   ```cpp
-   // BAD: Blocks event loop
-   looper->post([]() { return heavyComputation(); });
-   
-   // GOOD: Runs in separate thread
-   looper->postWork([]() { return heavyComputation(); });
-   ```
-
-2. **Batch small operations**
-   ```cpp
-   // BAD: Multiple small posts
-   for (int i = 0; i < 1000; ++i) {
-       looper->post([i]() { process(i); });
-   }
-   
-   // GOOD: Batch processing
-   looper->post([]() {
-       for (int i = 0; i < 1000; ++i) {
-           process(i);
-       }
-   });
-   ```
-
-3. **Reuse Timer objects when possible**
-   ```cpp
-   // Create once, reuse multiple times
-   auto timer = looper->addTimer(callback, 100ms);
-   timer.restart(200ms);  // Reuse existing timer
-   ```
+---
 
 ## Contributing
-
-### Development Setup
-
-```bash
-# Fork repository
-git clone https://github.com/yourusername/sw_task.git
-cd sw_task
-
-# Create development branch
-git checkout -b feature/your-feature
-
-# Install pre-commit hooks
-pip install pre-commit
-pre-commit install
-
-# Make changes and commit
-git add .
-git commit -m "Add your feature"
-git push origin feature/your-feature.
-```
-
-### Coding Standards
 
 - **C++17 standard compliance**
 - **Google C++ Style Guide**
@@ -581,20 +321,10 @@ git push origin feature/your-feature.
 - **Doxygen documentation for public APIs**
 - **RAII principles and smart pointer usage**
 
-### Pull Request Process
-
-1. **Fork the repository**
-2. **Create a feature branch**
-3. **Write tests for new functionality**
-4. **Ensure all tests pass**
-5. **Update documentation**
-6. **Submit pull request with detailed description**
+---
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-```
 MIT License
 
 Copyright (c) 2025 Tran Anh Tai
@@ -616,12 +346,10 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-```
 
 ---
 
 **Author**: Tran Anh Tai  
-**Email**: tai2.tran@lge.com | taitrananhvn@gmail.com  
-**GitHub**: [@taikt](https://github.com/taikt)  
+**Email**: tai2.tran@lge.com (taitrananhvn@gmail.com)  
 **Repository**: [https://github.com/taikt/sw_task](https://github.com/taikt/sw_task)  
 **Documentation**: [https://taikt.github.io/sw_task/](https://taikt.github.io/sw_task/)

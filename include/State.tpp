@@ -12,7 +12,7 @@
  #include "State.h"
  #include "SLLooper.h"
  
- namespace kt {
+ namespace swt {
  
  /**
   * @brief Set the promise value and execute continuation if available
@@ -251,6 +251,6 @@
      }
  }
  
- } // namespace kt
+ } // namespace swt
  
  #endif // STATE_TPP

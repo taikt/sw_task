@@ -1,6 +1,8 @@
 #include "Message.h"
 #include "Handler.h"
 
+namespace swt {
+
 Message::Message() :
     what(0),
     arg1(0),
@@ -200,5 +202,6 @@ void Message::setTo(const Message& other)
         spRef = other.spRef;
     }
 }
+} // namespace swt
 
 

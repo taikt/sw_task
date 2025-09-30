@@ -1,11 +1,15 @@
 #include <iostream>
 #include <string>
-using namespace std;
+
 #pragma once
+
+namespace swt {
 
 class RefBase 
 {
 public:
 	int id;
-	string method;
+	std::string method;
 };
+
+} // namespace swt

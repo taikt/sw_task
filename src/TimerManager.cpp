@@ -6,6 +6,8 @@
 #include <errno.h>
 #include <cstring>
 
+namespace swt {
+
 TimerManager::TimerManager(std::weak_ptr<SLLooper> looper) 
     : mLooper(looper) {
     
@@ -372,3 +374,5 @@ void TimerManager::updateCancelledPtr(TimerId id, std::atomic<bool>* newPtr) {
         TIMER_DEBUG_STREAM("Timer " << id << " not found for pointer update");
     }
 }
+
+} // namespace swt

@@ -21,10 +21,11 @@
  #include "Message.h"
  
  // Forward declaration
- namespace kt {
+ namespace swt {
      template<typename T> class Promise;
  }
  
+ namespace swt {
  /**
   * @class EventQueue
   * @brief Thread-safe unified queue for messages and function tasks with timed execution
@@ -317,7 +318,7 @@
       * @note Thread-safe promise resolution from any thread
       */
      template<typename T>
-     kt::Promise<T> enqueuePromise();
+     Promise<T> enqueuePromise();
      
      // ========== UNIFIED POLLING ==========
      
@@ -391,6 +392,6 @@
      mutable bool mQuit;                             /**< Atomic quit flag for graceful shutdown */
      std::condition_variable mQueueChanged;          /**< Condition variable for efficient polling */
  };
- 
+}
  // Include template implementations
  #include "EventQueue.tpp"

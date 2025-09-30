@@ -8,6 +8,8 @@
 using namespace std;
 #include <string>
 
+namespace swt {
+
 EventQueue::EventQueue() :
         mCurrentMessage(NULL),
         mStarted(false), mQuit(false)
@@ -181,13 +183,11 @@ int64_t EventQueue::uptimeMicros()
     return dur.count();
 }
 
-template<typename T>
-kt::Promise<T> EventQueue::enqueuePromise() {
-    kt::Promise<T> promise;
-    return promise;
-}
+
 
 // Explicit instantiations
-template kt::Promise<int> EventQueue::enqueuePromise<int>();
-template kt::Promise<void> EventQueue::enqueuePromise<void>();
-template kt::Promise<std::string> EventQueue::enqueuePromise<std::string>();
+template swt::Promise<int> swt::EventQueue::enqueuePromise<int>();
+template swt::Promise<void> swt::EventQueue::enqueuePromise<void>();
+template swt::Promise<std::string> swt::EventQueue::enqueuePromise<std::string>();
+
+} // namespace swt

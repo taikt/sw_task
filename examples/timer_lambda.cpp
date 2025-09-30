@@ -2,6 +2,8 @@
 #include <memory>
 #include <functional>
 #include "SLLooper.h"
+using namespace std::chrono_literals;
+using namespace swt;
 
 class MyClass {
     public:

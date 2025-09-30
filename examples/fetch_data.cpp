@@ -4,9 +4,10 @@
 #include <memory>
 #include <thread>
 #include <chrono>
+using namespace swt;
 
 // Simulate fetching data asynchronously
-kt::Promise<int> fetchData(std::shared_ptr<SLLooper> looper) {
+Promise<int> fetchData(std::shared_ptr<SLLooper> looper) {
     auto promise = looper->createPromise<int>();
     looper->post([promise]() mutable {
         std::cout << "Fetching data..." << std::endl;

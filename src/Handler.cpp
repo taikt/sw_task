@@ -12,8 +12,6 @@
  #include <iostream>
  #include <string>
  
- using namespace std;
- 
  /**
   * @def ms2us(x)
   * @brief Convert milliseconds to microseconds
@@ -24,6 +22,7 @@
   */
  #define ms2us(x) (x*1000LL)
  
+namespace swt {
  /**
   * @brief Constructor - associates handler with event loop
   * @param looper SLLooper instance for message queue access
@@ -202,7 +201,7 @@
   */
  std::shared_ptr<Message> Handler::obtainMessage(int32_t what, std::shared_ptr<RefBase> spRef)
  {
-     return Message::obtain(shared_from_this(), what, spRef); // ✅ SAFE!
+     return Message::obtain(shared_from_this(), what, spRef); 
  }
  
  // ========== MESSAGE SENDING API ==========
@@ -386,3 +385,5 @@
      auto dur = std::chrono::duration_cast<std::chrono::microseconds>(now.time_since_epoch());
      return dur.count();
  }
+
+} // namespace swt
