@@ -2,9 +2,15 @@ name: Generate and Deploy Documentation
 
 on:
   push:
-    branches: [ main, master ]  # Thêm master để đảm bảo tương thích
+    branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
+
+# Thêm permissions để GitHub Actions có thể deploy
+permissions:
+  contents: read
+  pages: write
+  id-token: write
 
 jobs:
   docs:
@@ -12,9 +18,9 @@ jobs:
     
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4  # Sử dụng phiên bản mới nhất
+      uses: actions/checkout@v4
       with:
-        fetch-depth: 0  # Cần full history cho proper deployment
+        fetch-depth: 0
     
     - name: Install Doxygen and dependencies
       run: |
@@ -36,12 +42,17 @@ jobs:
           ls -la docs/html/
         fi
     
+    - name: Setup Pages
+      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      uses: actions/configure-pages@v4
+    
+    - name: Upload artifact
+      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: ./docs/html
+    
     - name: Deploy to GitHub Pages
       if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-      uses: peaceiris/actions-gh-pages@v3
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: ./docs/html
-        force_orphan: true
-        enable_jekyll: false  # Tắt Jekyll để tránh xung đột
-        cname: # Nếu có custom domain thì thêm vào đây
+      id: deployment
+      uses: actions/deploy-pages@v4
