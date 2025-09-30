@@ -121,6 +121,7 @@ COLS_IN_ALPHA_INDEX    = 5
 #---------------------------------------------------------------------------
 
 GENERATE_HTML          = YES
+HTML_COLORSTYLE        = LIGHT
 HTML_OUTPUT            = html
 HTML_FILE_EXTENSION    = .html
 HTML_COLORSTYLE_HUE    = 220
@@ -184,7 +185,7 @@ CLASS_DIAGRAMS         = YES
 HAVE_DOT               = YES
 DOT_NUM_THREADS        = 0
 DOT_FONTNAME           = Helvetica
-DOT_FONTSIZE           = 10
+DOT_FONTSIZE           = 10doxygen 
 CLASS_GRAPH            = YES
 COLLABORATION_GRAPH    = YES
 GROUP_GRAPHS           = YES
