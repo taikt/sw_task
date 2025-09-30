@@ -80,7 +80,7 @@
   * @note Thread-safe for concurrent producers and single consumer
   * @warning Consumer polling should be from single thread for message ordering
   * 
-  * @see Message, Handler, Promise
+  * @see \ref swt::Message "Message", \ref swt::Handler "Handler", \ref swt::Promise "Promise"
   */
  class EventQueue
  {
@@ -224,6 +224,7 @@
       * 
       * @note Thread-safe operation
       * @note Uses binary search for O(log n) insertion
+      * @see \ref swt::Message "Message"
       */
      bool enqueueMessage(const std::shared_ptr<Message>& message, int64_t whenUs);
      
@@ -236,6 +237,7 @@
       * 
       * @note Prefer pollNext() for unified polling
       * @note Only returns MESSAGE type items
+      * @see \ref swt::Message "Message"
       */
      std::shared_ptr<Message> poll();
  
@@ -248,7 +250,7 @@
      bool isQuit();
  
      // ========== MODERN FUNCTION API ==========
-     
+ 
      /**
       * @brief Enqueue function for immediate asynchronous execution
       * @tparam F Function type (auto-deduced)
@@ -263,7 +265,7 @@
       * 
       * @note Implementation in EventQueue.tpp
       * @note Thread-safe operation with immediate notification
-      * @see enqueueFunction implementation for detailed behavior
+      * @see \ref swt::Promise "Promise"
       */
      template<typename F, typename... Args>
      auto enqueueFunction(F&& func, Args&&... args) -> std::future<decltype(func(args...))>;
@@ -283,17 +285,17 @@
       * 
       * @note Implementation in EventQueue.tpp
       * @note Thread-safe operation with conditional notification
-      * @see enqueueFunctionDelayed implementation for detailed behavior
+      * @see \ref swt::Promise "Promise"
       */
      template<typename F, typename... Args>  
      auto enqueueFunctionDelayed(int64_t delayMs, F&& func, Args&&... args) -> std::future<decltype(func(args...))>;
      
      // ========== PROMISE INTEGRATION ==========
-     
+ 
      /**
       * @brief Create and enqueue promise for manual resolution
       * @tparam T Value type for the promise
-      * @return kt::Promise<T> New promise object for manual control
+      * @return swt::Promise<T> New promise object for manual control
       * 
       * Creates a new promise that can be resolved manually from any thread.
       * The promise callbacks will execute in the event loop thread when
@@ -316,12 +318,13 @@
       * 
       * @note Promise callbacks execute in event loop thread
       * @note Thread-safe promise resolution from any thread
+      * @see \ref swt::Promise "Promise"
       */
      template<typename T>
      Promise<T> enqueuePromise();
      
      // ========== UNIFIED POLLING ==========
-     
+ 
      /**
       * @brief Poll for next ready queue item (unified interface)
       * @return std::optional<QueueItem> Next ready item, or nullopt if none
@@ -347,11 +350,12 @@
       * @note Blocks until item is ready or quit is called
       * @note Thread-safe for single consumer
       * @note Preferred method for modern event loop implementations
+      * @see \ref swt::Message "Message"
       */
      std::optional<QueueItem> pollNext();
      
      // ========== QUEUE CONTROL ==========
-     
+ 
      /**
       * @brief Request queue shutdown
       * 
@@ -369,6 +373,7 @@
       * 
       * Legacy method for checking if a specific message type is queued.
       * Used for message deduplication and state checking.
+      * @see \ref swt::Handler "Handler"
       */
      bool hasMessage(const std::shared_ptr<Handler>& h, int32_t what, void* obj);
      
@@ -392,6 +397,6 @@
      mutable bool mQuit;                             /**< Atomic quit flag for graceful shutdown */
      std::condition_variable mQueueChanged;          /**< Condition variable for efficient polling */
  };
-}
+ }
  // Include template implementations
  #include "EventQueue.tpp"

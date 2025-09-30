@@ -11,7 +11,7 @@
  #include "EventQueue.h"
  #include "Promise.h"
  #include "CpuTaskExecutor.h"
-
+ 
  namespace swt {
  // ========== DEBUG MACROS FOR CPU-BOUND DETECTION ==========
  
@@ -20,7 +20,7 @@
   * @brief Threshold (milliseconds) for warning about CPU-bound tasks in debug mode
   * 
   * Tasks that execute longer than this threshold will generate warnings
-  * to help identify operations that should be moved to CpuTaskExecutor.
+  * to help identify operations that should be moved to \ref swt::CpuTaskExecutor "CpuTaskExecutor".
   * Only active in DEBUG builds for performance reasons.
   */
  #ifdef DEBUG
@@ -85,6 +85,7 @@
   * @note For internal use by SLLooper::post() macro expansion
   * @note Debug overhead only in DEBUG builds
   * @note Uses std::apply for tuple argument unpacking
+  * @see \ref swt::SLLooper "SLLooper"
   */
  template<typename F, typename... Args>
  auto SLLooper::post_internal(F&& func, Args&&... args, const char* file, int line, const char* funcname)
@@ -125,6 +126,7 @@
   * 
   * @note For internal use by SLLooper::postDelayed() macro expansion
   * @note Same debug and performance characteristics as post_internal
+  * @see \ref swt::SLLooper "SLLooper"
   */
  template<typename F, typename... Args>
  auto SLLooper::postDelayed_internal(int64_t delayMs, F&& func, Args&&... args, const char* file, int line, const char* funcname)
@@ -184,6 +186,7 @@
   * @note Thread-safe operation
   * @note Arguments bound immediately, evaluated later
   * @note Direct EventQueue delegation for optimal performance
+  * @see \ref swt::SLLooper "SLLooper", \ref swt::EventQueue "EventQueue"
   */
  template<typename F, typename... Args>
  auto SLLooper::post(F&& func, Args&&... args) -> std::future<decltype(func(args...))> {
@@ -216,6 +219,7 @@
   * 
   * @note Delay measured from posting time, not execution time
   * @note Arguments bound immediately for consistent behavior
+  * @see \ref swt::SLLooper "SLLooper", \ref swt::EventQueue "EventQueue"
   */
  template<typename F, typename... Args>
  auto SLLooper::postDelayed(int64_t delayMs, F&& func, Args&&... args) -> std::future<decltype(func(args...))> {
@@ -258,6 +262,7 @@
   * @note Promise can be resolved from any thread
   * @note Callbacks execute in this looper's thread context
   * @note Each promise can only be resolved once
+  * @see \ref swt::Promise "Promise"
   */
  template<typename T>
  swt::Promise<T> SLLooper::createPromise() {
@@ -274,7 +279,7 @@
   * @param func CPU-intensive function to execute
   * @return swt::Promise<ReturnType> Promise for result retrieval and chaining
   * 
-  * Delegates CPU-bound task execution to CpuTaskExecutor, which handles
+  * Delegates CPU-bound task execution to \ref swt::CpuTaskExecutor "CpuTaskExecutor", which handles
   * separate thread execution and result delivery back to this event loop.
   * This ensures the main event loop remains responsive during CPU-intensive
   * operations.
@@ -302,6 +307,7 @@
   * @note Uses shared_from_this() to ensure SLLooper lifetime during async operation
   * @note Function executes in separate thread - ensure thread safety
   * @note Preferred over regular post() for CPU-intensive operations
+  * @see \ref swt::CpuTaskExecutor "CpuTaskExecutor", \ref swt::Promise "Promise"
   */
  template<typename Func>
  auto SLLooper::postWork(Func&& func) -> swt::Promise<decltype(func())> {
@@ -315,7 +321,7 @@
   * @param timeout Maximum execution time
   * @return swt::Promise<ReturnType> Promise for result retrieval
   * 
-  * Delegates CPU-bound task execution with timeout protection to CpuTaskExecutor.
+  * Delegates CPU-bound task execution with timeout protection to \ref swt::CpuTaskExecutor "CpuTaskExecutor".
   * If the task doesn't complete within the timeout, the promise is rejected
   * with a CpuTaskTimeoutException.
   * 
@@ -337,6 +343,7 @@
   * 
   * @note Timeout is enforced by CpuTaskExecutor's timeout mechanism
   * @note Timed-out tasks may continue running but results are discarded
+  * @see \ref swt::CpuTaskExecutor "CpuTaskExecutor", \ref swt::Promise "Promise"
   */
  template<typename Func>
  auto SLLooper::postWork(Func&& func, std::chrono::milliseconds timeout) 
@@ -377,6 +384,7 @@
   * @note Delegates to millisecond-based addTimer() after conversion
   * @note Sub-millisecond durations may be truncated
   * @note Timer precision limited by underlying system timer resolution
+  * @see \ref swt::SLLooper "SLLooper"
   */
  template<typename Rep, typename Period>
  Timer SLLooper::addTimer(std::function<void()> callback, 
@@ -414,6 +422,7 @@
   * @note Delegates to millisecond-based addPeriodicTimer() after conversion
   * @note Same conversion characteristics as one-shot timer version
   * @note Timer continues until cancelled or Timer object destroyed
+  * @see \ref swt::SLLooper "SLLooper"
   */
  template<typename Rep, typename Period>
  Timer SLLooper::addPeriodicTimer(std::function<void()> callback,
@@ -474,6 +483,7 @@
   * @note Returns Timer for cancellation, not future for result
   * @note Function captured by value for safe timer execution
   * @warning Function must not throw - timer callbacks should be exception-safe
+  * @see \ref swt::SLLooper "SLLooper"
   */
  template<typename Function>
  auto SLLooper::postWithTimeout(Function&& func, uint64_t timeout_ms) 
@@ -484,4 +494,4 @@
      }, timeout_ms);
  }
  
-} // namespace swt
+ } // namespace swt

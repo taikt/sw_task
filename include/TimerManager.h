@@ -20,11 +20,10 @@
  #include <mutex>
  #include <stdexcept>
  
- 
- 
  namespace swt {
-    class SLLooper;
-    class TimerManager;
+ class SLLooper;
+ class TimerManager;
+ 
  /**
   * @class TimerManager
   * @brief Linux-specific timer management using timerfd and epoll for high performance
@@ -38,7 +37,7 @@
   * - Support for both one-shot and periodic timers
   * - Thread-safe timer management with atomic operations
   * - Automatic cleanup of expired/cancelled timers
-  * - Integration with SLLooper for callback execution
+  * - Integration with \ref swt::SLLooper "SLLooper" for callback execution
   * 
   * @code{.cpp}
   * auto looper = std::make_shared<SLLooper>();
@@ -56,7 +55,7 @@
   * @note Linux-specific implementation requiring kernel version 2.6.25+
   * @warning Must be used with SLLooper for proper callback execution
   * 
-  * @see Timer, SLLooper
+  * @see \ref swt::Timer "Timer", \ref swt::SLLooper "SLLooper"
   */
  class TimerManager {
  public:
@@ -71,19 +70,19 @@
          int fd;                           /**< timerfd file descriptor for kernel timer */
          std::function<void()> callback;   /**< callback function to execute on timer expiration */
          bool periodic;                    /**< true for periodic timer, false for one-shot */
-         uint64_t interval_ms;            /**< interval in milliseconds for periodic timers */
-         TimerId id;                      /**< unique timer identifier */
-         std::atomic<bool>* cancelled;    /**< pointer to Timer object's cancellation flag */
+         uint64_t interval_ms;             /**< interval in milliseconds for periodic timers */
+         TimerId id;                       /**< unique timer identifier */
+         std::atomic<bool>* cancelled;     /**< pointer to Timer object's cancellation flag */
      };
  
  private:
      int mEpollFd;                                        /**< epoll file descriptor for event monitoring */
-     std::thread mTimerThread;                           /**< dedicated timer processing thread */
-     std::atomic<bool> mRunning{true};                   /**< flag to control timer thread lifecycle */
-     std::unordered_map<TimerId, TimerInfo> mTimers;     /**< map of active timers */
-     std::mutex mTimersMutex;                            /**< mutex protecting timer map access */
-     std::weak_ptr<SLLooper> mLooper;                    /**< weak reference to parent SLLooper */
-     std::atomic<TimerId> mNextId{1};                    /**< atomic counter for unique timer IDs */
+     std::thread mTimerThread;                             /**< dedicated timer processing thread */
+     std::atomic<bool> mRunning{true};                     /**< flag to control timer thread lifecycle */
+     std::unordered_map<TimerId, TimerInfo> mTimers;       /**< map of active timers */
+     std::mutex mTimersMutex;                              /**< mutex protecting timer map access */
+     std::weak_ptr<SLLooper> mLooper;                      /**< weak reference to parent SLLooper */
+     std::atomic<TimerId> mNextId{1};                      /**< atomic counter for unique timer IDs */
  
  public:
      /**
@@ -93,6 +92,8 @@
       * 
       * Creates epoll file descriptor and starts dedicated timer thread.
       * The weak_ptr prevents circular dependency with SLLooper.
+      * 
+      * @see \ref swt::SLLooper "SLLooper"
       */
      explicit TimerManager(std::weak_ptr<SLLooper> looper);
      
@@ -108,7 +109,7 @@
      ~TimerManager();
  
      // ========== Internal API for Timer objects ==========
-     
+ 
      /**
       * @brief Create a new timer with specified parameters
       * @param callback Function to call when timer expires
@@ -122,11 +123,11 @@
       * monitoring, and stores in internal timer map.
       * 
       * @note Thread-safe operation protected by mTimersMutex
-      * @see cancelTimer(), restartTimer()
+      * @see \ref swt::TimerManager::cancelTimer "cancelTimer", \ref swt::TimerManager::restartTimer "restartTimer"
       */
      TimerId createTimer(std::function<void()> callback, uint64_t delay_ms, 
                         bool periodic, std::atomic<bool>* cancelled);
-     
+ 
      /**
       * @brief Cancel and remove timer
       * @param id Timer identifier returned by createTimer()
@@ -136,18 +137,20 @@
       * from internal map. Safe to call multiple times on same timer.
       * 
       * @note Thread-safe operation
+      * @see \ref swt::TimerManager::createTimer "createTimer"
       */
      bool cancelTimer(TimerId id);
-     
+ 
      /**
       * @brief Check if timer exists and is active
       * @param id Timer identifier to check
       * @return true if timer exists in active timer map
       * 
       * @note Thread-safe read operation
+      * @see \ref swt::TimerManager::createTimer "createTimer"
       */
      bool hasTimer(TimerId id);
-     
+ 
      /**
       * @brief Restart existing timer with new delay
       * @param id Timer identifier to restart
@@ -158,9 +161,10 @@
       * Maintains all other timer properties (periodic, callback, etc.).
       * 
       * @note Thread-safe operation
+      * @see \ref swt::TimerManager::createTimer "createTimer"
       */
      bool restartTimer(TimerId id, uint64_t delay_ms);
-     
+ 
      /**
       * @brief Get count of currently active timers
       * @return Number of timers in active state
@@ -170,7 +174,7 @@
       * @note Thread-safe operation
       */
      size_t getActiveTimerCount();
-     
+ 
      /**
       * @brief Update cancellation pointer for moved Timer objects
       * @param id Timer identifier
@@ -185,7 +189,7 @@
  
  private:
      // ========== Internal implementation methods ==========
-     
+ 
      /**
       * @brief Main timer thread function - epoll event loop
       * 
@@ -196,9 +200,10 @@
       * 4. Continue until mRunning becomes false
       * 
       * @note Runs in separate thread, communicates with main thread via SLLooper
+      * @see \ref swt::SLLooper "SLLooper"
       */
      void timerThreadFunc();
-     
+ 
      /**
       * @brief Create and configure Linux timerfd
       * @param delay_ms Initial delay in milliseconds
@@ -210,7 +215,7 @@
       * For periodic timers, sets both initial delay and repeat interval.
       */
      int createTimerFd(uint64_t delay_ms, bool periodic);
-     
+ 
      /**
       * @brief Handle timer expiration event
       * @param timerInfo Timer information for expired timer
@@ -222,7 +227,7 @@
       * 4. Read timerfd to acknowledge expiration
       */
      void handleTimerExpired(const TimerInfo& timerInfo);
-     
+ 
      /**
       * @brief Remove timer from internal data structures
       * @param id Timer identifier to cleanup
@@ -233,7 +238,7 @@
       * @note Must be called with appropriate locking
       */
      void cleanupTimer(TimerId id);
-     
+ 
      /**
       * @brief Update existing timerfd with new timing parameters
       * @param fd Timer file descriptor to update
@@ -246,5 +251,5 @@
       */
      void updateTimerFd(int fd, uint64_t delay_ms, bool periodic);
  };
-
-} // namespace swt
+ 
+ } // namespace swt

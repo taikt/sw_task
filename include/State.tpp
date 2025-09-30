@@ -31,6 +31,8 @@
   * auto state = std::make_shared<State<int>>();
   * state->setValue(42);  // Moves value and executes continuation
   * @endcode
+  * 
+  * @see \ref swt::State::setValue "setValue"
   */
  template <typename tValue>
  void State<tValue>::setValue(tValue &&value) {
@@ -62,6 +64,8 @@
   *     state->setException(std::current_exception());
   * }
   * @endcode
+  * 
+  * @see \ref swt::State::setException "setException"
   */
  template <typename tValue>
  void State<tValue>::setException(std::exception_ptr exception) {
@@ -93,6 +97,8 @@
   *     std::cout << "Promise resolved with: " << result << std::endl;
   * });
   * @endcode
+  * 
+  * @see \ref swt::State::setContinuation "setContinuation", \ref swt::SLLooper "SLLooper"
   */
  template <typename tValue>
  template<typename F>
@@ -134,6 +140,8 @@
   *     }
   * });
   * @endcode
+  * 
+  * @see \ref swt::State::setErrorHandler "setErrorHandler", \ref swt::SLLooper "SLLooper"
   */
  template <typename tValue>
  template<typename F>
@@ -158,6 +166,8 @@
   * 
   * @note Uses lambda capture with move semantics for efficiency
   * @note Private method called internally by setValue() and setContinuation()
+  * 
+  * @see \ref swt::SLLooper "SLLooper"
   */
  template <typename tValue>
  void State<tValue>::executeContination(tValue value) {
@@ -179,6 +189,8 @@
   * 
   * @note Exception pointer is copyable and safe to capture
   * @note Private method called internally by setException() and error propagation
+  * 
+  * @see \ref swt::SLLooper "SLLooper"
   */
  template <typename tValue>
  void State<tValue>::executeErrorHandler(std::exception_ptr exception) {
@@ -210,6 +222,8 @@
   *     std::cout << "Void promise completed!" << std::endl;
   * });
   * @endcode
+  * 
+  * @see \ref swt::State::setContinuation "setContinuation", \ref swt::SLLooper "SLLooper"
   */
  template<typename F>
  void State<std::monostate>::setContinuation(std::shared_ptr<SLLooper>& looper_, F&& continuation) {
@@ -239,6 +253,8 @@
   * 
   * @note Specialization maintains API consistency for void promises
   * @note Error handler signature remains the same (takes std::exception_ptr)
+  * 
+  * @see \ref swt::State::setErrorHandler "setErrorHandler", \ref swt::SLLooper "SLLooper"
   */
  template<typename F>
  void State<std::monostate>::setErrorHandler(std::shared_ptr<SLLooper>& looper_, F&& errorHandler) {

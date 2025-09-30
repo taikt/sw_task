@@ -27,7 +27,7 @@
   * @tparam tValue Type of value stored in the promise state
   * 
   * State provides the core functionality for promise/future pattern implementation
-  * with asynchronous callback execution via SLLooper integration. Key features:
+  * with asynchronous callback execution via \ref swt::SLLooper "SLLooper" integration. Key features:
   * 
   * - **Value storage**: Optional-based value storage with move semantics
   * - **Exception handling**: std::exception_ptr for type-safe error propagation
@@ -63,7 +63,7 @@
   * @note Thread-safe when used with SLLooper for callback execution
   * @warning Direct member access is not thread-safe - use provided methods
   * 
-  * @see Promise, Future, SLLooper
+  * @see \ref swt::Promise "Promise", \ref swt::SLLooper "SLLooper"
   */
  template <typename tValue>
  class State 
@@ -95,6 +95,7 @@
       * 
       * @note Implementation in State.tpp
       * @note Thread-safe execution via SLLooper
+      * @see \ref swt::State::setValue "setValue"
       */
      void setValue(tValue &&value);
      
@@ -108,6 +109,7 @@
       * 
       * @note Implementation in State.tpp
       * @note Thread-safe execution via SLLooper
+      * @see \ref swt::State::setException "setException"
       */
      void setException(std::exception_ptr exception);
  
@@ -123,6 +125,7 @@
       * 
       * @note Implementation in State.tpp
       * @note Uses perfect forwarding to preserve function properties
+      * @see \ref swt::SLLooper "SLLooper"
       */
      template<typename F>
      void setContinuation(std::shared_ptr<SLLooper>& looper_, F&& continuation);
@@ -139,6 +142,7 @@
       * 
       * @note Implementation in State.tpp
       * @note Error handler receives std::exception_ptr parameter
+      * @see \ref swt::SLLooper "SLLooper"
       */
      template<typename F>
      void setErrorHandler(std::shared_ptr<SLLooper>& looper_, F&& errorHandler);
@@ -152,6 +156,7 @@
       * message queue for asynchronous execution in the correct thread context.
       * 
       * @note Implementation in State.tpp
+      * @see \ref swt::SLLooper "SLLooper"
       */
      void executeContination(tValue value);
      
@@ -163,6 +168,7 @@
       * message queue for asynchronous execution.
       * 
       * @note Implementation in State.tpp
+      * @see \ref swt::SLLooper "SLLooper"
       */
      void executeErrorHandler(std::exception_ptr exception);
      
@@ -206,7 +212,7 @@
   * @note Specialization maintains API consistency for void promises
   * @note std::monostate is a dummy type representing "no value"
   * 
-  * @see State, Promise<void>, Future<void>
+  * @see \ref swt::State "State", \ref swt::Promise "Promise<void>"
   */
  template <>
  class State<std::monostate>
@@ -231,6 +237,7 @@
       * without an actual value.
       * 
       * @note Implementation in State.tpp
+      * @see \ref swt::State::setValue "setValue"
       */
      void setValue(std::monostate &&value);
      
@@ -242,6 +249,7 @@
       * and triggers error handler if available.
       * 
       * @note Implementation in State.tpp
+      * @see \ref swt::State::setException "setException"
       */
      void setException(std::exception_ptr exception);
  
@@ -256,6 +264,7 @@
       * 
       * @note Continuation signature is void() not void(std::monostate)
       * @note Implementation in State.tpp
+      * @see \ref swt::SLLooper "SLLooper"
       */
      template<typename F>
      void setContinuation(std::shared_ptr<SLLooper>& looper_, F&& continuation);
@@ -270,6 +279,7 @@
       * with std::exception_ptr parameter.
       * 
       * @note Implementation in State.tpp
+      * @see \ref swt::SLLooper "SLLooper"
       */
      template<typename F>
      void setErrorHandler(std::shared_ptr<SLLooper>& looper_, F&& errorHandler);
@@ -284,6 +294,7 @@
       * take no parameters.
       * 
       * @note Implementation in State.tpp
+      * @see \ref swt::SLLooper "SLLooper"
       */
      void executeContination(std::monostate value);
      
@@ -292,6 +303,7 @@
       * @param exception Exception pointer to pass to error handler
       * 
       * @note Implementation in State.tpp
+      * @see \ref swt::SLLooper "SLLooper"
       */
      void executeErrorHandler(std::exception_ptr exception);
      

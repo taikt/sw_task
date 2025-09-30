@@ -69,49 +69,44 @@ Main Thread              Event Loop Thread           CPU-bound Task thread
 
 ### 1. Function Posting & Promise
 
-<!-- 
-  For Doxygen-generated documentation, use \ref for hyperlinks.
-  If this README is processed by Doxygen, these will be clickable links.
--->
-
-| Category           | API Name                                                                                                   | Description                                                        |
-|--------------------|-----------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------|
-| Function Posting   | \ref swt::SLLooper::post "post(func, args...)"                                                            | Post task to event loop, returns `std::future`                     |
-|                    | \ref swt::SLLooper::postDelayed "postDelayed(delayMs, func, args...)"                                     | Post delayed task, returns `std::future`                           |
-|                    | \ref swt::SLLooper::postWithTimeout "postWithTimeout(func, timeout_ms)"                                   | Post task with timeout, returns `Timer`                            |
-| Promise            | \ref swt::SLLooper::createPromise "createPromise<T>()"                                                    | Create manual promise                                              |
-|                    | \ref swt::SLLooper::postWork "postWork(func)"                                                             | Run CPU-bound task, returns `Promise`                              |
-|                    | \ref swt::SLLooper::postWork "postWork(func, timeout)"                                                    | Run CPU-bound task with timeout                                    |
-|                    | \ref swt::Promise::set_value "Promise::set_value(value)"                                                  | Fulfill promise                                                    |
-|                    | \ref swt::Promise::then "Promise::then(callback)"                                                         | Chain callback on success                                          |
-|                    | \ref swt::Promise::catchError "Promise::catchError(callback)"                                             | Chain error handler                                                |
+| Category           | API Name                        | Description                                                                                  |
+|--------------------|---------------------------------|----------------------------------------------------------------------------------------------|
+| Function Posting   | post(func, args...)             | Post a function or lambda to the event loop for immediate execution. Returns a `std::future` for result retrieval. Thread-safe and supports any callable signature. |
+|                    | postDelayed(delayMs, func, args...) | Post a function or lambda to the event loop to be executed after a specified delay in milliseconds. Returns a `std::future`. |
+|                    | postWithTimeout(func, timeout_ms) | Post a function to be executed after a timeout. Returns a `Timer` object for cancellation. Only for void-returning functions. |
+| Promise            | createPromise<T>()              | Create a manual promise object of type `T`. Allows explicit fulfillment or rejection from any thread. |
+|                    | postWork(func)                  | Run a CPU-bound function in a dedicated worker thread. Returns a `Promise` for result and chaining. |
+|                    | postWork(func, timeout)         | Run a CPU-bound function with a timeout. If the function does not complete in time, the promise is rejected. |
+|                    | Promise::set_value(value)       | Fulfill a promise with a value, triggering any chained continuations.                        |
+|                    | Promise::then(callback)         | Chain a callback to be executed when the promise is fulfilled. Supports type transformation. |
+|                    | Promise::catchError(callback)   | Chain an error handler to be executed if the promise is rejected with an exception.          |
 
 ---
 
 ### 2. Timer & Timer Control
 
-| Category      | API Name                                              | Description                                 |
-|---------------|-------------------------------------------------------|---------------------------------------------|
-| Timer         | \ref swt::SLLooper::addTimer "addTimer(cb, delay)"    | One-shot timer                              |
-|               | \ref swt::SLLooper::addPeriodicTimer "addPeriodicTimer(cb, interval)" | Periodic timer                  |
-| Timer Control | \ref swt::Timer::cancel "Timer::cancel()"             | Cancel timer                                |
-|               | \ref swt::Timer::isActive "Timer::isActive()"         | Check if timer is active                    |
-|               | \ref swt::Timer::restart "Timer::restart(delay)"      | Restart timer                               |
+| Category      | API Name                | Description                                 |
+|---------------|-------------------------|---------------------------------------------|
+| Timer         | addTimer(cb, delay)     | Create a one-shot timer that executes a callback after a specified delay (ms).   |
+|               | addPeriodicTimer(cb, interval) | Create a periodic timer that executes a callback repeatedly at the given interval (ms). |
+| Timer Control | Timer::cancel()         | Cancel the timer, preventing further callbacks.                                  |
+|               | Timer::isActive()       | Check if the timer is currently active and not cancelled.                        |
+|               | Timer::restart(delay)   | Restart a one-shot timer with a new delay.                                       |
 
 ---
 
 ### 3. Message & Handler
 
-| Category           | API Name                                              | Description                                |
-|--------------------|------------------------------------------------------|--------------------------------------------|
-| Message Creation   | \ref swt::Handler::obtainMessage "obtainMessage()"   | Create empty message                       |
-|                    | \ref swt::Handler::obtainMessage "obtainMessage(what, ...)" | Create message with code/args      |
-| Message Sending    | \ref swt::Handler::sendMessage "sendMessage(msg)"    | Send message immediately                   |
-|                    | \ref swt::Handler::sendMessageDelayed "sendMessageDelayed(msg, delay)" | Send message after delay         |
-| Message Management | \ref swt::Handler::hasMessages "hasMessages(what)"   | Check if messages exist                    |
-|                    | \ref swt::Handler::removeMessages "removeMessages(what)" | Remove messages                      |
-| Processing         | \ref swt::Handler::dispatchMessage "dispatchMessage(msg)" | Dispatch to handler                  |
-|                    | \ref swt::Handler::handleMessage "handleMessage(msg)" | Override to process message           |
+| Category           | API Name                  | Description                                |
+|--------------------|--------------------------|--------------------------------------------|
+| Message Creation   | obtainMessage()           | Create an empty message object.            |
+|                    | obtainMessage(what, ...)  | Create a message with a type code and optional arguments. |
+| Message Sending    | sendMessage(msg)          | Send a message for immediate processing by the handler.   |
+|                    | sendMessageDelayed(msg, delay) | Send a message to the handler after a specified delay (ms). |
+| Message Management | hasMessages(what)         | Check if there are pending messages of a given type.       |
+|                    | removeMessages(what)      | Remove all messages of a given type from the queue.        |
+| Processing         | dispatchMessage(msg)      | Dispatch a message to the handler for processing.          |
+|                    | handleMessage(msg)        | Override this method in your handler to process messages.  |
 
 ---
 

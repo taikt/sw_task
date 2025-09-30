@@ -62,6 +62,8 @@
   * @note Result callbacks execute in specified SLLooper thread context
   * @note std::future is intentionally not waited on - Promise provides coordination
   * @warning Avoid capturing SLLooper or other event loop objects in func
+  * 
+  * @see \ref swt::CpuTaskExecutor "CpuTaskExecutor", \ref swt::Promise "Promise", \ref swt::SLLooper "SLLooper"
   */
  template<typename Func>
  auto CpuTaskExecutor::executeAsync(std::shared_ptr<SLLooper> resultLooper,
@@ -155,6 +157,8 @@
   * @note Timed-out tasks continue running but results are discarded
   * @note CpuTaskTimeoutException provides timeout duration information
   * @warning Long-running tasks may continue executing after timeout
+  * 
+  * @see \ref swt::CpuTaskTimeoutException "CpuTaskTimeoutException", \ref swt::Promise "Promise", \ref swt::SLLooper "SLLooper"
   */
  template<typename Func>
  auto CpuTaskExecutor::executeAsync(std::shared_ptr<SLLooper> resultLooper,

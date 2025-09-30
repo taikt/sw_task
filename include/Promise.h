@@ -16,14 +16,10 @@
  #include <exception>
  #include "Log.h"
  
-
-
  // Forward declarations
-
- 
  namespace swt {
-    class SLLooper;
-    template <typename tValue> class State;
+     class SLLooper;
+     template <typename tValue> class State;
  
  /**
   * @class Promise
@@ -33,7 +29,7 @@
   * Promise provides a modern C++ implementation of the promise/future pattern with:
   * - **Type-safe continuation chaining**: Automatic type deduction for chained operations
   * - **Exception propagation**: Automatic error handling through the promise chain
-  * - **Asynchronous execution**: Integration with SLLooper for thread-safe callback execution
+  * - **Asynchronous execution**: Integration with \ref swt::SLLooper "SLLooper" for thread-safe callback execution
   * - **Move semantics**: Efficient value transfer without unnecessary copies
   * - **Template specialization**: Special handling for void-returning promises
   * 
@@ -65,7 +61,7 @@
   * @note Thread-safe when used with SLLooper for callback execution
   * @warning Promise can only be resolved once with either value or exception
   * 
-  * @see State, SLLooper, Future
+  * @see swt::State "State", \ref swt::SLLooper "SLLooper", \ref swt::Promise "Promise"
   */
  template <typename tValue>
  class Promise
@@ -149,6 +145,8 @@
       *     std::cout << msg << std::endl;
       * });
       * @endcode
+      * 
+      * @see \ref swt::Promise "Promise", \ref swt::SLLooper "SLLooper"
       */
      template <typename F>
      auto then(std::shared_ptr<SLLooper>& looper_, F func) -> Promise<std::invoke_result_t<F, tValue>>;
@@ -184,6 +182,8 @@
       *     // Other exceptions will be re-thrown
       * });
       * @endcode
+      * 
+      * @see \ref swt::Promise "Promise", \ref swt::SLLooper "SLLooper"
       */
      template <typename F>
      auto catchError(std::shared_ptr<SLLooper>& looper_, F func) -> Promise<tValue>;
@@ -241,7 +241,7 @@
   * @note Specialization maintains API consistency with value-returning promises
   * @note std::monostate used internally to represent completion state
   * 
-  * @see Promise, State<std::monostate>
+  * @see \ref swt::Promise "Promise", \ref swt::State "State<std::monostate>"
   */
  template <>
  class Promise<void>
@@ -307,6 +307,8 @@
       *     std::cout << msg << std::endl;
       * });
       * @endcode
+      * 
+      * @see \ref swt::Promise "Promise", \ref swt::SLLooper "SLLooper"
       */
      template <typename F>
      auto then(std::shared_ptr<SLLooper>& looper_, F func) -> Promise<std::invoke_result_t<F>>;
@@ -333,6 +335,8 @@
       *     std::cout << "Promise chain continues!" << std::endl;
       * });
       * @endcode
+      * 
+      * @see \ref swt::Promise "Promise", \ref swt::SLLooper "SLLooper"
       */
      template <typename F>
      auto catchError(std::shared_ptr<SLLooper>& looper_, F func) -> Promise<void>;

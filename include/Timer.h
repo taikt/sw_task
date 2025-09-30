@@ -12,10 +12,9 @@
  #include <functional>
  #include <atomic>
  
- 
-
  namespace swt {
-    class SLLooper;
+ class SLLooper;
+ 
  /**
   * @typedef TimerId
   * @brief Unique identifier type for timer instances
@@ -64,14 +63,14 @@
   * @note Timer objects are move-only and cannot be copied
   * @warning Accessing moved-from Timer objects results in no-op operations
   * 
-  * @see SLLooper::addTimer(), TimerManager
+  * @see \ref swt::SLLooper::addTimer "SLLooper::addTimer", \ref swt::Timer "Timer", \ref TimerManager "TimerManager"
   */
  class Timer {
  private:
      TimerId mId;                                      /**< Unique timer identifier */
-     std::weak_ptr<SLLooper> mLooper;                 /**< Weak reference to parent SLLooper */
-     std::atomic<bool> mCancelled{false};             /**< Atomic cancellation flag */
-     mutable std::atomic<bool> mMoved{false};         /**< Track if moved from (thread-safe) */
+     std::weak_ptr<SLLooper> mLooper;                  /**< Weak reference to parent SLLooper */
+     std::atomic<bool> mCancelled{false};              /**< Atomic cancellation flag */
+     mutable std::atomic<bool> mMoved{false};          /**< Track if moved from (thread-safe) */
  
  public:
      /**
@@ -82,10 +81,10 @@
       * Creates a Timer handle that manages the lifecycle of a kernel timer.
       * The weak_ptr prevents circular dependencies with the parent SLLooper.
       * 
-      * @note Typically called internally by SLLooper::addTimer()
+      * @note Typically called internally by \ref swt::SLLooper::addTimer "SLLooper::addTimer"
       */
      Timer(TimerId id, std::weak_ptr<SLLooper> looper);
-     
+ 
      /**
       * @brief Copy constructor - deleted (move-only semantics)
       * 
@@ -93,14 +92,14 @@
       * the underlying kernel timer resource.
       */
      Timer(const Timer&) = delete;
-     
+ 
      /**
       * @brief Copy assignment - deleted (move-only semantics)
       * 
       * Timer objects cannot be copy-assigned to ensure unique ownership.
       */
      Timer& operator=(const Timer&) = delete;
-     
+ 
      /**
       * @brief Move constructor - transfers timer ownership
       * @param other Timer object to move from
@@ -115,7 +114,7 @@
       * @note Thread-safe operation with atomic flags
       */
      Timer(Timer&& other) noexcept;
-     
+ 
      /**
       * @brief Move assignment - transfers timer ownership
       * @param other Timer object to move from
@@ -128,7 +127,7 @@
       * @note Thread-safe operation
       */
      Timer& operator=(Timer&& other) noexcept;
-     
+ 
      /**
       * @brief Destructor - automatic timer cleanup
       * 
@@ -142,7 +141,7 @@
      ~Timer();
  
      // ========== Public API (boost-style) ==========
-     
+ 
      /**
       * @brief Cancel the timer
       * 
@@ -158,9 +157,11 @@
       * timer.cancel();  // Timer won't fire
       * timer.cancel();  // Safe - no-op
       * @endcode
+      * 
+      * @see \ref swt::Timer::cancel "Timer::cancel"
       */
      void cancel();
-     
+ 
      /**
       * @brief Check if timer is currently active
       * @return true if timer is active and not cancelled, false otherwise
@@ -180,9 +181,11 @@
       *     std::cout << "Timer is running" << std::endl;
       * }
       * @endcode
+      * 
+      * @see \ref swt::Timer::isActive "Timer::isActive"
       */
      bool isActive() const;
-     
+ 
      /**
       * @brief Get unique timer identifier
       * @return TimerId for this timer instance
@@ -191,9 +194,10 @@
       * Useful for debugging and logging purposes.
       * 
       * @note Safe to call on moved-from objects (returns original ID)
+      * @see \ref swt::Timer::getId "Timer::getId"
       */
      TimerId getId() const { return mId; }
-     
+ 
      /**
       * @brief Restart timer with new delay (one-shot timers only)
       * @param delay_ms New delay in milliseconds before timer expiration
@@ -211,9 +215,11 @@
       * timer.cancel();           // Cancel current timer
       * timer.restart(2000);      // Restart with 2 second delay
       * @endcode
+      * 
+      * @see \ref swt::Timer::restart "Timer::restart"
       */
      void restart(uint64_t delay_ms);
-     
+ 
      /**
       * @brief Friend class declaration for internal access
       * 
@@ -237,5 +243,5 @@
       */
      void moveFrom(Timer&& other) noexcept;
  };
-
-} // namespace swt
+ 
+ } // namespace swt

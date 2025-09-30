@@ -16,11 +16,9 @@
  #include "Timer.h"
  #include "EventQueue.h"
  
-
-
  namespace swt {
-    class TimerManager;
-    template<typename T> class Promise;
+ class TimerManager;
+ template<typename T> class Promise;
  
  /**
   * @class SLLooper
@@ -69,7 +67,7 @@
   * @note Thread-safe for task submission, but not for direct member access
   * @warning Must be created as shared_ptr due to enable_shared_from_this usage
   * 
-  * @see EventQueue, TimerManager, Timer, Promise
+  * @see \ref swt::EventQueue "EventQueue", \ref swt::TimerManager "TimerManager", \ref swt::Timer "Timer", \ref swt::Promise "Promise"
   */
  class SLLooper : public std::enable_shared_from_this<SLLooper>
  {
@@ -98,9 +96,9 @@
       * @brief Get access to the underlying event queue
       * @return std::shared_ptr<EventQueue> Shared pointer to the event queue
       * 
-      * Provides direct access to the underlying EventQueue for advanced operations
+      * Provides direct access to the underlying \ref swt::EventQueue "EventQueue" for advanced operations
       * that require direct queue manipulation or integration with legacy message-based code.
-      * Most users should prefer the high-level post() methods instead.
+      * Most users should prefer the high-level \ref swt::SLLooper::post "post()" methods instead.
       * 
       * Use cases for direct queue access:
       * - **Legacy integration**: Working with existing message-based code
@@ -125,7 +123,7 @@
       * @note Thread-safe operation (EventQueue is thread-safe)
       * @warning Direct queue manipulation may interfere with SLLooper's internal operations
       * 
-      * @see EventQueue, post(), postDelayed()
+      * @see \ref swt::EventQueue "EventQueue", \ref swt::SLLooper::post "post()", \ref swt::SLLooper::postDelayed "postDelayed()"
       */
      std::shared_ptr<EventQueue> getEventQueue();
  
@@ -145,7 +143,7 @@
       * Internal implementation that adds CPU-bound task detection in debug builds.
       * Warns if task execution exceeds CPU_BOUND_DETECT_THRESHOLD_MS (3000ms).
       * 
-      * @note For internal use - prefer post() for normal usage
+      * @note For internal use - prefer \ref swt::SLLooper::post "post()" for normal usage
       * @note Implementation in SLLooper.tpp
       */
      template<typename F, typename... Args>
@@ -166,7 +164,7 @@
       * 
       * Internal implementation for delayed execution with CPU-bound detection.
       * 
-      * @note For internal use - prefer postDelayed() for normal usage
+      * @note For internal use - prefer \ref swt::SLLooper::postDelayed "postDelayed()" for normal usage
       * @note Implementation in SLLooper.tpp
       */
      template<typename F, typename... Args>
@@ -202,6 +200,7 @@
       * @note Thread-safe operation
       * @note Function executes in event loop thread context
       * @note Implementation in SLLooper.tpp
+      * @see \ref swt::SLLooper::postDelayed "postDelayed()", \ref swt::SLLooper::postWithTimeout "postWithTimeout()"
       */
      template<typename F, typename... Args>
      auto post(F&& func, Args&&... args) -> std::future<decltype(func(args...))>;
@@ -231,12 +230,13 @@
       * @note Thread-safe operation
       * @note Delay is measured from when the function is posted
       * @note Implementation in SLLooper.tpp
+      * @see \ref swt::SLLooper::post "post()"
       */
      template<typename F, typename... Args>
      auto postDelayed(int64_t delayMs, F&& func, Args&&... args) -> std::future<decltype(func(args...))>;
      
      // ========== PROMISE API ==========
-     
+ 
      /**
       * @brief Create a new promise object for manual result setting
       * @tparam T Value type for the promise
@@ -261,13 +261,13 @@
       * @endcode
       * 
       * @note Implementation in SLLooper.tpp
-      * @see Promise, Future
+      * @see \ref swt::Promise "Promise", \ref swt::Future "Future"
       */
      template<typename T>
      swt::Promise<T> createPromise();
      
      // ========== CPU-BOUND TASK API ==========
-     
+ 
      /**
       * @brief Execute CPU-intensive task asynchronously
       * @tparam Func Function type (auto-deduced)
@@ -293,11 +293,11 @@
       * 
       * @note Uses separate thread pool, doesn't block event loop
       * @note Implementation in SLLooper.tpp
-      * @see CpuTaskExecutor, Promise
+      * @see \ref swt::CpuTaskExecutor "CpuTaskExecutor", \ref swt::Promise "Promise"
       */
      template<typename Func>
      auto postWork(Func&& func) -> swt::Promise<decltype(func())>;
-     
+ 
      /**
       * @brief Execute CPU-intensive task with timeout
       * @tparam Func Function type (auto-deduced)
@@ -322,11 +322,12 @@
       * @endcode
       * 
       * @note Implementation in SLLooper.tpp
+      * @see \ref swt::CpuTaskExecutor "CpuTaskExecutor", \ref swt::Promise "Promise"
       */
      template<typename Func>
      auto postWork(Func&& func, std::chrono::milliseconds timeout) 
          -> swt::Promise<decltype(func())>;
-     
+ 
      /**
       * @brief Run one iteration of the event loop
       * @return true if loop should continue, false to exit
@@ -337,7 +338,7 @@
       * @note Not typically called by user code
       */
      bool loop();
-     
+ 
      /**
       * @brief Request event loop to exit
       * 
@@ -347,7 +348,7 @@
      void exit();
  
      // ========== TIMER API (Boost-style) ==========
-     
+ 
      /**
       * @brief Add one-shot timer with millisecond precision
       * @param callback Function to call when timer expires
@@ -369,10 +370,10 @@
       * @endcode
       * 
       * @note Timer automatically cancels when Timer object is destroyed
-      * @see Timer, TimerManager
+      * @see \ref swt::Timer "Timer", \ref swt::TimerManager "TimerManager"
       */
      Timer addTimer(std::function<void()> callback, uint64_t delay_ms);
-     
+ 
      /**
       * @brief Add one-shot timer with chrono duration
       * @tparam Rep Duration representation type (e.g., int, long)
@@ -395,11 +396,12 @@
       * 
       * @note Implementation in SLLooper.tpp
       * @note Duration is converted to milliseconds internally
+      * @see \ref swt::Timer "Timer"
       */
      template<typename Rep, typename Period>
      Timer addTimer(std::function<void()> callback, 
                     const std::chrono::duration<Rep, Period>& delay);
-     
+ 
      /**
       * @brief Add periodic timer with millisecond interval
       * @param callback Function to call on each timer expiration
@@ -421,9 +423,10 @@
       * @endcode
       * 
       * @note Timer continues until cancelled or Timer object is destroyed
+      * @see \ref swt::Timer "Timer"
       */
      Timer addPeriodicTimer(std::function<void()> callback, uint64_t interval_ms);
-     
+ 
      /**
       * @brief Add periodic timer with chrono interval
       * @tparam Rep Duration representation type
@@ -444,13 +447,14 @@
       * @endcode
       * 
       * @note Implementation in SLLooper.tpp
+      * @see \ref swt::Timer "Timer"
       */
      template<typename Rep, typename Period>
      Timer addPeriodicTimer(std::function<void()> callback,
                            const std::chrono::duration<Rep, Period>& interval);
-     
+ 
      // ========== CONVENIENCE METHODS ==========
-     
+ 
      /**
       * @brief Post function with timeout, returns Timer for cancellation
       * @tparam Function Function type (auto-deduced)
@@ -474,13 +478,14 @@
       * 
       * @note Only works with void-returning functions
       * @note Implementation in SLLooper.tpp
+      * @see \ref swt::Timer "Timer"
       */
      template<typename Function>
      auto postWithTimeout(Function&& func, uint64_t timeout_ms) 
          -> std::enable_if_t<std::is_void_v<std::invoke_result_t<Function>>, Timer>;
          
      // ========== INTERNAL TIMER API ==========
-     
+ 
      /**
       * @brief Internal timer creation method
       * @param callback Function to call when timer expires
@@ -493,28 +498,31 @@
       * Creates TimerManager lazily if not already initialized.
       * 
       * @note For internal use by Timer class
+      * @see \ref swt::TimerManager "TimerManager"
       */
      TimerId createTimerInternal(std::function<void()> callback, uint64_t delay_ms, 
                                 bool periodic, std::atomic<bool>* cancelled);
-     
+ 
      /**
       * @brief Internal timer cancellation method
       * @param id Timer identifier to cancel
       * @return true if timer was found and cancelled
       * 
       * @note For internal use by Timer class
+      * @see \ref swt::TimerManager "TimerManager"
       */
      bool cancelTimerInternal(TimerId id);
-     
+ 
      /**
       * @brief Check if timer exists in internal management
       * @param id Timer identifier to check
       * @return true if timer exists and is active
       * 
       * @note For internal use by Timer class
+      * @see \ref swt::TimerManager "TimerManager"
       */
      bool hasTimerInternal(TimerId id);
-     
+ 
      /**
       * @brief Restart existing timer with new delay
       * @param id Timer identifier to restart
@@ -522,17 +530,19 @@
       * @return true if timer was found and restarted
       * 
       * @note For internal use by Timer class
+      * @see \ref swt::TimerManager "TimerManager"
       */
      bool restartTimerInternal(TimerId id, uint64_t delay_ms);
-     
+ 
      /**
       * @brief Get count of active timers
       * @return Number of currently active timers
       * 
       * Useful for debugging and monitoring timer usage.
+      * @see \ref swt::TimerManager "TimerManager"
       */
      size_t getActiveTimerCount();
-     
+ 
      /**
       * @brief Initialize TimerManager lazily
       * 
@@ -540,9 +550,10 @@
       * Uses lazy initialization to avoid unnecessary resources.
       * 
       * @note Called automatically when first timer is created
+      * @see \ref swt::TimerManager "TimerManager"
       */
      void initializeTimerManager();
-     
+ 
      /**
       * @brief Update timer cancellation pointer for moved Timer objects
       * @param id Timer identifier
@@ -552,6 +563,7 @@
       * pointer references for proper cancellation handling.
       * 
       * @note For internal use by Timer move operations
+      * @see \ref swt::Timer "Timer"
       */
      void updateTimerCancelledPtr(TimerId id, std::atomic<bool>* newPtr);
  
@@ -561,7 +573,7 @@
      std::thread t1;                                  /**< Main event loop thread */
      std::unique_ptr<TimerManager> mTimerManager;     /**< Timer management (lazy initialization) */
  };
-} // namespace swt
+ } // namespace swt
  
  // Include template implementations
  #include "SLLooper.tpp"

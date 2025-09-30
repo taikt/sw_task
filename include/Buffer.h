@@ -52,11 +52,13 @@
   * @note Thread-safe for read-only operations when not being modified
   * @note Not thread-safe for concurrent modifications
   * @warning Pointer returned by data() becomes invalid after resize operations
+  * 
+  * @see \ref swt::Buffer::setSize "setSize()", \ref swt::Buffer::setTo "setTo()", \ref swt::Buffer::append "append()", \ref swt::Buffer::data "data()", \ref swt::Buffer::size "size()", \ref swt::Buffer::clear "clear()", \ref swt::Buffer::dump "dump()"
   */
  class Buffer {
  public:
      // ========== CONSTRUCTORS AND DESTRUCTOR ==========
-     
+ 
      /**
       * @brief Default constructor - creates empty buffer
       * 
@@ -66,7 +68,7 @@
       * @note No memory allocated until first data operation
       */
      Buffer();
-     
+ 
      /**
       * @brief Copy constructor - creates buffer from another buffer
       * @param other Source buffer to copy from
@@ -77,7 +79,7 @@
       * @note Performs deep copy - changes to either buffer don't affect the other
       */
      Buffer(const Buffer& other);
-     
+ 
      /**
       * @brief Destructor - cleans up buffer resources
       * 
@@ -85,7 +87,7 @@
       * std::vector destructor handles the actual memory deallocation.
       */
      ~Buffer();
-     
+ 
      /**
       * @brief Assignment operator - assigns data from another buffer
       * @param other Source buffer to assign from
@@ -102,11 +104,12 @@
       * 
       * @note Self-assignment safe
       * @note Previous buffer contents are lost
+      * @see \ref swt::Buffer::setTo "setTo()"
       */
      Buffer& operator=(const Buffer& other);
  
      // ========== SIZE AND INITIALIZATION METHODS ==========
-     
+ 
      /**
       * @brief Set buffer size and initialize with zeros
       * @param len New buffer size in bytes
@@ -122,11 +125,12 @@
       * @note Previous buffer contents are lost
       * @note Negative length is treated as zero (creates empty buffer)
       * @note More efficient than resize + manual zero-fill
+      * @see \ref swt::Buffer::clear "clear()"
       */
      void setSize(int32_t len);
  
      // ========== DATA COPYING METHODS ==========
-     
+ 
      /**
       * @brief Copy data from another buffer
       * @param buffer Source buffer to copy from
@@ -142,9 +146,10 @@
       * 
       * @note Deep copy - source and destination are independent
       * @note Previous destination contents are lost
+      * @see \ref swt::Buffer::setTo "setTo()"
       */
      void setTo(const Buffer& buffer);
-     
+ 
      /**
       * @brief Copy data from byte array
       * @param buf Source byte array pointer
@@ -161,9 +166,10 @@
       * @note Null pointer or zero/negative length results in empty buffer
       * @note Previous buffer contents are lost
       * @warning Source pointer must remain valid during copy operation
+      * @see \ref swt::Buffer::setTo "setTo()"
       */
      void setTo(uint8_t* buf, int32_t len);
-     
+ 
      /**
       * @brief Copy data from char array
       * @param buf Source char array pointer
@@ -179,9 +185,10 @@
       * 
       * @note Same behavior as uint8_t* version
       * @note Useful for string data without null terminator
+      * @see \ref swt::Buffer::setTo "setTo()"
       */
      void setTo(char* buf, int32_t len);
-     
+ 
      /**
       * @brief Append data to existing buffer contents
       * @param buf Source byte array to append
@@ -199,11 +206,12 @@
       * @note Null pointer or zero/negative length is ignored (no-op)
       * @note Efficient - uses vector::insert for optimal performance
       * @note Previous buffer contents are preserved
+      * @see \ref swt::Buffer::append "append()"
       */
      void append(uint8_t* buf, int32_t len);
  
      // ========== DATA ACCESS METHODS ==========
-     
+ 
      /**
       * @brief Get pointer to buffer data
       * @return Pointer to internal buffer data, or nullptr if empty
@@ -223,9 +231,10 @@
       * @warning Do not access beyond buffer.size() bytes
       * @note Returns nullptr for empty buffers to avoid undefined behavior
       * @note Pointer may change after resize, append, or setTo operations
+      * @see \ref swt::Buffer::size "size()"
       */
      uint8_t* data();
-     
+ 
      /**
       * @brief Get current buffer size
       * @return Number of bytes currently stored in buffer
@@ -241,9 +250,10 @@
       * 
       * @note This may be different from the vector's capacity
       * @note Constant time operation - O(1)
+      * @see \ref swt::Buffer::data "data()"
       */
      uint32_t size() const;
-     
+ 
      /**
       * @brief Check if buffer contains no data
       * @return true if buffer is empty (size == 0)
@@ -260,11 +270,12 @@
       * 
       * @note More efficient than size() == 0 check
       * @note Constant time operation - O(1)
+      * @see \ref swt::Buffer::size "size()"
       */
      bool empty();
  
      // ========== BUFFER MANAGEMENT METHODS ==========
-     
+ 
      /**
       * @brief Clear all buffer contents and mark as cleared
       * 
@@ -280,11 +291,12 @@
       * @note Sets internal mClear flag to true for debugging purposes
       * @note Frees allocated memory (not just marks as empty)
       * @note After clear(), data() returns nullptr
+      * @see \ref swt::Buffer::empty "empty()", \ref swt::Buffer::size "size()"
       */
      void clear();
  
      // ========== DEBUG AND UTILITY METHODS ==========
-     
+ 
      /**
       * @brief Dump current buffer contents to stdout
       * 
@@ -301,9 +313,10 @@
       * @note Non-destructive operation - buffer contents unchanged
       * @note Uses uppercase hexadecimal format
       * @note Outputs to std::cout with automatic newline
+      * @see \ref swt::Buffer::dump "dump()"
       */
      void dump();
-     
+ 
      /**
       * @brief Static method to dump byte array contents to stdout
       * @param s Pointer to byte array to dump
@@ -323,12 +336,13 @@
       * @note Static method - can be called without Buffer instance
       * @note Handles null pointer and invalid length gracefully
       * @note Same format as instance dump() method
+      * @see \ref swt::Buffer::dump "dump()"
       */
      static void dump(uint8_t* s, int32_t len);
  
  private:
      // ========== INTERNAL METHODS ==========
-     
+ 
      /**
       * @brief Internal method to resize buffer without initialization
       * @param size New buffer size in bytes
@@ -341,7 +355,7 @@
       * @note More efficient than setSize() when initialization not needed
       */
      void _assign(uint32_t size);
-     
+ 
      /**
       * @brief Internal method to release all buffer resources
       * 
@@ -350,12 +364,13 @@
       * 
       * @note Currently identical to clear() - may diverge in future versions
       * @note For internal use - prefer clear() for external calls
+      * @see \ref swt::Buffer::clear "clear()"
       */
      void _release();
  
  private:
      // ========== MEMBER VARIABLES ==========
-     
+ 
      /**
       * @brief Internal byte storage container
       * 
@@ -363,7 +378,7 @@
       * Provides automatic memory allocation, deallocation, and reallocation.
       */
      std::vector<uint8_t> mBuf;
-     
+ 
      /**
       * @brief Clear flag for debugging purposes
       * 
@@ -372,4 +387,4 @@
       */
      bool mClear;
  };
-}
+ }

@@ -8,7 +8,7 @@
 
  #pragma once
  #include "EventQueue.h" 
- 
+  
  namespace swt {
  /**
   * @brief Enqueue function for immediate asynchronous execution
@@ -46,12 +46,12 @@
   * @note Thread-safe operation with automatic notification
   * @note Function executes in event loop thread context
   * @warning Future must be retrieved before function object destruction
+  * 
+  * @see \ref swt::EventQueue "EventQueue", \ref swt::Promise "Promise"
   */
  template<typename F, typename... Args>
  auto EventQueue::enqueueFunction(F&& func, Args&&... args) -> std::future<decltype(func(args...))> {
      using ReturnType = decltype(func(args...));
-     
-     // std::cout << "EventQueue: enqueuing function" << std::endl;
      
      // Bind arguments to function using perfect forwarding
      auto boundTask = std::bind(std::forward<F>(func), std::forward<Args>(args)...);
@@ -62,7 +62,6 @@
      
      // Wrap in void task for type-erased queue storage
      auto voidTask = std::packaged_task<void()>([task = std::move(packagedTask)]() mutable {
-         // std::cout << "EventQueue: executing wrapped task" << std::endl;
          task();
      });
      
@@ -70,17 +69,11 @@
          std::lock_guard<std::mutex> lock(iMutex);
          int64_t whenUs = 0;  // IMMEDIATE EXECUTION - front of queue
          
-         // std::cout << "EventQueue: inserting at time " << whenUs << std::endl;
-         
          // Insert at beginning for immediate execution (highest priority)
          mQueue.emplace_front(std::move(voidTask), whenUs);
-         
-         // std::cout << "EventQueue: queue size now " << mQueue.size() << std::endl;
      }
      
      // ALWAYS notify condition variable to wake up event loop thread
-     // This ensures immediate processing regardless of queue started state
-     // std::cout << "EventQueue: notifying condition variable (forced)" << std::endl;
      mQueueChanged.notify_one();
          
      return future;
@@ -125,6 +118,8 @@
   * @note Thread-safe operation with efficient ordered insertion
   * @note Delay is measured from when function is enqueued
   * @note Only notifies condition variable if event loop is started
+  * 
+  * @see \ref swt::EventQueue "EventQueue", \ref swt::Promise "Promise"
   */
  template<typename F, typename... Args>
  auto EventQueue::enqueueFunctionDelayed(int64_t delayMs, F&& func, Args&&... args) -> std::future<decltype(func(args...))> {
@@ -149,8 +144,6 @@
          int64_t whenUs = uptimeMicros() + (delayMs * 1000);
          
          // Insert at correct chronological position using binary search
-         // std::upper_bound finds first position where whenUs would be inserted
-         // to maintain sorted order, ensuring FIFO for same timestamps
          auto insertPos = std::upper_bound(mQueue.begin(), mQueue.end(), whenUs,
              [](int64_t time, const QueueItem& item) {
                  return time < item.whenUs;
@@ -167,10 +160,21 @@
      
      return future;
  }
-
-template<typename T>
-Promise<T> EventQueue::enqueuePromise() {
+ 
+ /**
+  * @brief Create and enqueue promise for manual resolution
+  * @tparam T Value type for the promise
+  * @return swt::Promise<T> New promise object for manual control
+  * 
+  * Creates a new promise that can be resolved manually from any thread.
+  * The promise callbacks will execute in the event loop thread when
+  * the promise is resolved or rejected.
+  * 
+  * @see \ref swt::Promise "Promise"
+  */
+ template<typename T>
+ Promise<T> EventQueue::enqueuePromise() {
      return Promise<T>();
-}
-
-} // namespace swt
+ }
+ 
+ } // namespace swt

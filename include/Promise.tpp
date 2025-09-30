@@ -22,6 +22,8 @@
   * 
   * Initializes a new promise with a shared State object for
   * communication between promise and future/continuation handlers.
+  * 
+  * @see \ref swt::Promise "Promise", \ref swt::State "State"
   */
  template <typename tValue>
  Promise<tValue>::Promise() : m_state(std::make_shared<State<tValue>>()) {}
@@ -39,6 +41,8 @@
   * Promise<int> promise;
   * promise.set_value(42);  // Resolves promise and triggers continuations
   * @endcode
+  * 
+  * @see \ref swt::Promise::set_value "set_value()"
   */
  template <typename tValue>
  void Promise<tValue>::set_value(tValue value) {
@@ -61,6 +65,8 @@
   *     promise.set_exception(std::current_exception());
   * }
   * @endcode
+  * 
+  * @see \ref swt::Promise::set_exception "set_exception()"
   */
  template <typename tValue>
  void Promise<tValue>::set_exception(std::exception_ptr exception) {
@@ -92,6 +98,8 @@
   *     std::cout << "Result: " << doubled << std::endl;
   * });
   * @endcode
+  * 
+  * @see \ref swt::Promise::then "then()", \ref swt::SLLooper "SLLooper"
   */
  template <typename tValue>
  template <typename F>
@@ -147,6 +155,8 @@
   *     // Other exceptions will be re-thrown
   * });
   * @endcode
+  * 
+  * @see \ref swt::Promise::catchError "catchError()", \ref swt::SLLooper "SLLooper"
   */
  template <typename tValue>
  template <typename F>
@@ -199,6 +209,8 @@
   *     std::cout << msg << std::endl;
   * });
   * @endcode
+  * 
+  * @see \ref swt::Promise::then "then()", \ref swt::SLLooper "SLLooper"
   */
  template <typename F>
  auto Promise<void>::then(std::shared_ptr<SLLooper>& looper_, F func) -> Promise<std::invoke_result_t<F>> {
@@ -250,6 +262,8 @@
   *     std::cout << "Promise chain continues!" << std::endl;
   * });
   * @endcode
+  * 
+  * @see \ref swt::Promise::catchError "catchError()", \ref swt::SLLooper "SLLooper"
   */
  template <typename F>
  auto Promise<void>::catchError(std::shared_ptr<SLLooper>& looper_, F func) -> Promise<void> {
