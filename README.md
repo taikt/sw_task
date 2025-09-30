@@ -69,44 +69,49 @@ Main Thread              Event Loop Thread           CPU-bound Task thread
 
 ### 1. Function Posting & Promise
 
-| Category           | API Name                                 | Description                                                        |
-|--------------------|------------------------------------------|--------------------------------------------------------------------|
-| Function Posting   | `post(func, args...)`                    | Post task to event loop, returns `std::future`                     |
-|                    | [`postDelayed(delayMs, func, args...)`](https://taikt.github.io/sw_task/classswt_1_1SLLooper.html#a49498e5f8dc94c812bae2fda76ad2b37)    | Post delayed task, returns `std::future`                           |
-|                    | `postWithTimeout(func, timeout_ms)`      | Post task with timeout, returns `Timer`                            |
-| Promise            | `createPromise<T>()`                     | Create manual promise                                              |
-|                    | `postWork(func)`                         | Run CPU-bound task, returns `Promise`                              |
-|                    | `postWork(func, timeout)`                | Run CPU-bound task with timeout                                    |
-|                    | `Promise::set_value(value)`              | Fulfill promise                                                    |
-|                    | `Promise::then(callback)`                | Chain callback on success                                          |
-|                    | `Promise::catchError(callback)`          | Chain error handler                                                |
+<!-- 
+  For Doxygen-generated documentation, use \ref for hyperlinks.
+  If this README is processed by Doxygen, these will be clickable links.
+-->
+
+| Category           | API Name                                                                                                   | Description                                                        |
+|--------------------|-----------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------|
+| Function Posting   | \ref swt::SLLooper::post "post(func, args...)"                                                            | Post task to event loop, returns `std::future`                     |
+|                    | \ref swt::SLLooper::postDelayed "postDelayed(delayMs, func, args...)"                                     | Post delayed task, returns `std::future`                           |
+|                    | \ref swt::SLLooper::postWithTimeout "postWithTimeout(func, timeout_ms)"                                   | Post task with timeout, returns `Timer`                            |
+| Promise            | \ref swt::SLLooper::createPromise "createPromise<T>()"                                                    | Create manual promise                                              |
+|                    | \ref swt::SLLooper::postWork "postWork(func)"                                                             | Run CPU-bound task, returns `Promise`                              |
+|                    | \ref swt::SLLooper::postWork "postWork(func, timeout)"                                                    | Run CPU-bound task with timeout                                    |
+|                    | \ref swt::Promise::set_value "Promise::set_value(value)"                                                  | Fulfill promise                                                    |
+|                    | \ref swt::Promise::then "Promise::then(callback)"                                                         | Chain callback on success                                          |
+|                    | \ref swt::Promise::catchError "Promise::catchError(callback)"                                             | Chain error handler                                                |
 
 ---
 
 ### 2. Timer & Timer Control
 
-| Category      | API Name                        | Description                                 |
-|---------------|---------------------------------|---------------------------------------------|
-| Timer         | `addTimer(cb, delay)`           | One-shot timer                              |
-|               | `addPeriodicTimer(cb, interval)`| Periodic timer                              |
-| Timer Control | `Timer::cancel()`               | Cancel timer                                |
-|               | `Timer::isActive()`             | Check if timer is active                    |
-|               | `Timer::restart(delay)`         | Restart timer                               |
+| Category      | API Name                                              | Description                                 |
+|---------------|-------------------------------------------------------|---------------------------------------------|
+| Timer         | \ref swt::SLLooper::addTimer "addTimer(cb, delay)"    | One-shot timer                              |
+|               | \ref swt::SLLooper::addPeriodicTimer "addPeriodicTimer(cb, interval)" | Periodic timer                  |
+| Timer Control | \ref swt::Timer::cancel "Timer::cancel()"             | Cancel timer                                |
+|               | \ref swt::Timer::isActive "Timer::isActive()"         | Check if timer is active                    |
+|               | \ref swt::Timer::restart "Timer::restart(delay)"      | Restart timer                               |
 
 ---
 
 ### 3. Message & Handler
 
-| Category           | API Name                                 | Description                                |
-|--------------------|------------------------------------------|--------------------------------------------|
-| Message Creation   | `obtainMessage()`                        | Create empty message                       |
-|                    | `obtainMessage(what, ...)`               | Create message with code/args              |
-| Message Sending    | `sendMessage(msg)`                       | Send message immediately                   |
-|                    | `sendMessageDelayed(msg, delay)`         | Send message after delay                   |
-| Message Management | `hasMessages(what)`                      | Check if messages exist                    |
-|                    | `removeMessages(what)`                   | Remove messages                            |
-| Processing         | `dispatchMessage(msg)`                   | Dispatch to handler                        |
-|                    | `handleMessage(msg)`                     | Override to process message                |
+| Category           | API Name                                              | Description                                |
+|--------------------|------------------------------------------------------|--------------------------------------------|
+| Message Creation   | \ref swt::Handler::obtainMessage "obtainMessage()"   | Create empty message                       |
+|                    | \ref swt::Handler::obtainMessage "obtainMessage(what, ...)" | Create message with code/args      |
+| Message Sending    | \ref swt::Handler::sendMessage "sendMessage(msg)"    | Send message immediately                   |
+|                    | \ref swt::Handler::sendMessageDelayed "sendMessageDelayed(msg, delay)" | Send message after delay         |
+| Message Management | \ref swt::Handler::hasMessages "hasMessages(what)"   | Check if messages exist                    |
+|                    | \ref swt::Handler::removeMessages "removeMessages(what)" | Remove messages                      |
+| Processing         | \ref swt::Handler::dispatchMessage "dispatchMessage(msg)" | Dispatch to handler                  |
+|                    | \ref swt::Handler::handleMessage "handleMessage(msg)" | Override to process message           |
 
 ---
 
