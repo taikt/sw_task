@@ -1,0 +1,26 @@
+# Build directories
+build/
+cmake-build-*/
+
+# Documentation output
+docs/html/
+docs/latex/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Compiled binaries
+*.o
+*.so
+*.a
+*.exe
+
+# folder
+venv

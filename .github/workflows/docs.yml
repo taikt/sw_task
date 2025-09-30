@@ -1,0 +1,47 @@
+name: Generate and Deploy Documentation
+
+on:
+  push:
+    branches: [ main, master ]  # Thêm master để đảm bảo tương thích
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4  # Sử dụng phiên bản mới nhất
+      with:
+        fetch-depth: 0  # Cần full history cho proper deployment
+    
+    - name: Install Doxygen and dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y doxygen graphviz plantuml
+    
+    - name: Create output directory
+      run: |
+        mkdir -p docs
+    
+    - name: Generate Documentation
+      run: |
+        doxygen Doxyfile
+    
+    - name: List generated files (debug)
+      run: |
+        ls -la docs/
+        if [ -d "docs/html" ]; then
+          ls -la docs/html/
+        fi
+    
+    - name: Deploy to GitHub Pages
+      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./docs/html
+        force_orphan: true
+        enable_jekyll: false  # Tắt Jekyll để tránh xung đột
+        cname: # Nếu có custom domain thì thêm vào đây
