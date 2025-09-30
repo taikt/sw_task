@@ -570,7 +570,7 @@ pre-commit install
 # Make changes and commit
 git add .
 git commit -m "Add your feature"
-git push origin feature/your-feature
+git push origin feature/your-feature.
 ```
 
 ### Coding Standards
