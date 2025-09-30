@@ -1,0 +1,245 @@
+@startuml
+class SLLooper {
+    +SLLooper()
+    +~SLLooper()
+    +getEventQueue() : std::shared_ptr<EventQueue>
+    +post_internal(F, Args..., file, line, funcname) : std::future
+    +postDelayed_internal(delayMs, F, Args..., file, line, funcname) : std::future
+    +post(F, Args...) : std::future
+    +postDelayed(delayMs, F, Args...) : std::future
+    +createPromise<T>() : kt::Promise<T>
+    +postWork(Func) : kt::Promise
+    +postWork(Func, timeout) : kt::Promise
+    +loop() : bool
+    +exit() : void
+    +addTimer(callback, delay_ms) : Timer
+    +addTimer(callback, delay) : Timer
+    +addPeriodicTimer(callback, interval_ms) : Timer
+    +addPeriodicTimer(callback, interval) : Timer
+    +postWithTimeout(func, timeout_ms) : Timer
+    +createTimerInternal(callback, delay_ms, periodic, cancelled) : TimerId
+    +cancelTimerInternal(id) : bool
+    +hasTimerInternal(id) : bool
+    +restartTimerInternal(id, delay_ms) : bool
+    +getActiveTimerCount() : size_t
+    +initializeTimerManager() : void
+    +updateTimerCancelledPtr(id, newPtr) : void
+    --
+    -mEventQueue : std::shared_ptr<EventQueue>
+    -mStarted : std::atomic<bool>
+    -t1 : std::thread
+    -mTimerManager : std::unique_ptr<TimerManager>
+}
+
+SLLooper o-- "1" EventQueue
+SLLooper o-- "1" TimerManager
+SLLooper ..> Timer
+SLLooper ..> kt::Promise
+@enduml
+
+
+@startuml
+namespace kt {
+    class Promise {
+        +Promise()
+        +set_value()
+        +set_exception()
+        +then()
+        +catchError()
+        +operator()
+        --
+        -m_state
+    }
+}
+
+Promise o-- State
+Promise ..> SLLooper
+@enduml
+
+@startuml
+class EventQueue {
+    +EventQueue()
+    +~EventQueue()
+    +enqueueMessage()
+    +poll()
+    +isQuit()
+    +enqueueFunction()
+    +enqueueFunctionDelayed()
+    +enqueuePromise()
+    +pollNext()
+    +quit()
+    +hasMessage()
+    +uptimeMicros()
+    --
+    -mQueue
+    -mCurrentMessage
+    -iMutex
+    -mStarted
+    -mQuit
+    -mQueueChanged
+}
+
+EventQueue o-- "deque" QueueItem
+EventQueue o-- Message
+EventQueue o-- Handler
+EventQueue o-- kt::Promise
+@enduml
+
+@startuml
+namespace kt {
+    class CpuTaskExecutor {
+        +executeAsync(resultLooper, func)
+        +executeAsync(resultLooper, func, timeout)
+        --
+        <<static utility>>
+    }
+
+    class CpuTaskTimeoutException {
+        +CpuTaskTimeoutException(message)
+    }
+}
+
+CpuTaskExecutor ..> Promise
+CpuTaskExecutor ..> SLLooper
+CpuTaskExecutor ..> CpuTaskTimeoutException
+CpuTaskTimeoutException --|> std::runtime_error
+@enduml
+
+@startuml
+namespace kt {
+    class State {
+        +State()
+        +~State()
+        +setValue()
+        +setException()
+        +setContinuation()
+        +setErrorHandler()
+        --
+        -m_value
+        -m_exception
+        -m_continuation
+        -m_errorHandler
+        -m_looper
+        -m_errorLooper
+    }
+}
+
+State o-- SLLooper
+State ..> std::exception_ptr
+State ..> std::optional
+State ..> std::function
+@enduml
+
+
+@startuml
+class TimerManager {
+    +TimerManager(looper)
+    +~TimerManager()
+    +createTimer(callback, delay_ms, periodic, cancelled)
+    +cancelTimer(id)
+    +hasTimer(id)
+    +restartTimer(id, delay_ms)
+    +getActiveTimerCount()
+    +updateCancelledPtr(id, newPtr)
+    --
+    -mEpollFd
+    -mTimerThread
+    -mRunning
+    -mTimers
+    -mTimersMutex
+    -mLooper
+    -mNextId
+}
+
+class TimerInfo {
+    +fd
+    +callback
+    +periodic
+    +interval_ms
+    +id
+    +cancelled
+}
+
+TimerManager "1" o-- "*" TimerInfo
+TimerManager ..> SLLooper
+TimerManager ..> Timer
+@enduml
+
+
+@startuml
+class Handler {
+    +Handler()
+    +Handler(looper)
+    +~Handler()
+    +obtainMessage()
+    +sendMessage()
+    +sendMessageDelayed()
+    +sendMessageAtTime()
+    +hasMessages()
+    +removeMessages()
+    +dispatchMessage()
+    +uptimeMicros()
+    +handleMessage() <<abstract>>
+    --
+    -mEventQueue
+    -mLooper
+}
+
+Handler o-- EventQueue
+Handler o-- SLLooper
+Handler ..> Message
+Handler ..> RefBase
+@enduml
+
+@startuml
+class Timer {
+    +Timer(TimerId, std::weak_ptr<SLLooper>)
+    +Timer(Timer&&) noexcept
+    +~Timer()
+    +cancel()
+    +isActive() : bool
+    +getId() : TimerId
+    +restart(delay_ms)
+    --
+    -mId : TimerId
+    -mLooper : std::weak_ptr<SLLooper>
+    -mCancelled : std::atomic<bool>
+    -mMoved : std::atomic<bool>
+    +operator=(Timer&&) noexcept
+    -moveFrom(Timer&&) noexcept
+    <<move-only>>
+}
+
+Timer ..> SLLooper
+Timer ..> TimerId
+@enduml
+
+@startuml
+class Message {
+    +Message()
+    +Message(Message& other)
+    +~Message()
+    +sendToTarget() : bool
+    +dup() : std::shared_ptr<Message>
+    +setTo(const Message& other)
+    +getObject<T>(std::shared_ptr<T>& obj)
+    +operator=(const Message& other)
+    +clear()
+    --
+    +what : int32_t
+    +arg1 : int32_t
+    +arg2 : int32_t
+    +arg3 : int32_t
+    +obj : void*
+    +obj_size : ssize_t
+    +spRef : std::shared_ptr<RefBase>
+    +mHandler : std::shared_ptr<Handler>
+    +mNextMessage : std::shared_ptr<Message>
+    -whenUs : int64_t
+    +obtain(...) : std::shared_ptr<Message>
+}
+
+Message ..> Handler
+Message ..> RefBase
+Message ..> Message
+@enduml
