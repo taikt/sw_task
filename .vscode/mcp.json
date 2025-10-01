@@ -14,9 +14,6 @@
         "req_dir": "/home/worker/src/codefun/tsu/honda/spec/ecall/regulation",
         "framework_dir": "/home/worker/src/tsu/nad/LGE/tiger-src/servicelayer/core/framework/utils"
       }
-    },
-    "markitdown": {
-      "command": "/home/worker/src/markitdown/mcp/venv/bin/markitdown-mcp"
     }
   }
 }
