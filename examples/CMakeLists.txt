@@ -101,3 +101,10 @@ target_link_libraries(timer_vector pthread)
 add_executable(task_runner task_runner.cpp ${SW_TASK_SRC})
 target_link_libraries(task_runner pthread)
 
+add_executable(response_time response_time.cpp ${SW_TASK_SRC})
+target_link_libraries(response_time pthread)
+
+add_executable(stress_timer stress_timer.cpp ${SW_TASK_SRC})
+target_link_libraries(stress_timer pthread)
+
+

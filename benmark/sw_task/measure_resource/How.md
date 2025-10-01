@@ -1,4 +1,10 @@
 
+# tao moi truong ao
+python3 -m venv venv
+
+source venv/bin/activate
+pip install pandas matplotlib
+
 # Đo task_runner
 python3 measure_psutil.py -- ./task_runner 10 2
 
@@ -10,4 +16,6 @@ python3 measure_psutil.py -- ./simple_program
 
 # ve bieu do
 python3 draw.py results.json
+
+
 

@@ -13,6 +13,7 @@
 #include <mutex>
 #include <fstream>
 #include <iomanip>
+using namespace swt;
 
 class ResponseTimeTestHandler : public Handler {
 private:
@@ -52,129 +53,16 @@ public:
         std::cout << "Message received: what=" << msg->what << std::endl;
     }
     
-    // Test với light tasks sử dụng post()
-    void startLightTaskTest(int num_tasks = 10) {
-        std::cout << "\n=== LIGHT TASK RESPONSE TIME TEST ===" << std::endl;
-        std::cout << "Testing " << num_tasks << " light tasks using SLLooper::post()" << std::endl;
-        std::cout << "💡 Target: 200-500ms per task" << std::endl;
-        std::cout << "PID: " << getpid() << std::endl;
-        std::cout << "Hardware threads: " << std::thread::hardware_concurrency() << std::endl;
-        std::cout << std::endl;
-        
-        total_tasks = num_tasks;
-        completed_tasks = 0;
-        task_timelines.clear();
-        task_timelines.resize(num_tasks);
-        
-        test_start_time = std::chrono::high_resolution_clock::now();
-        
-        // ✅ Post tất cả tasks cùng lúc
-        for(int i = 0; i < num_tasks; i++) {
-            auto post_time = std::chrono::high_resolution_clock::now();
-            
-            {
-                std::lock_guard<std::mutex> lock(timeline_mutex);
-                task_timelines[i].task_id = i;
-                task_timelines[i].task_type = "LIGHT";
-                task_timelines[i].post_time = post_time;  // ✅ Thời điểm post
-            }
-            
-            mSLLooper->post([this, i]() {
-                this->executeLightTask(i);
-            });
-            
-            std::cout << "Light Task " << i << " posted at " 
-                     << std::chrono::duration_cast<std::chrono::microseconds>(post_time - test_start_time).count() / 1000.0 << "ms" << std::endl;
-        }
-        
-        std::cout << "All " << num_tasks << " light tasks posted to SLLooper" << std::endl;
-    }
-    
-    // Heavy task test với postWork()
-    void startHeavyTaskTest(int num_tasks = 5) {
-        std::cout << "\n=== HEAVY TASK RESPONSE TIME TEST ===" << std::endl;
-        std::cout << "Testing " << num_tasks << " heavy tasks using SLLooper::postWork()" << std::endl;
-        std::cout << "🔥 Target: 800-1500ms per task" << std::endl;
-        std::cout << "PID: " << getpid() << std::endl;
-        std::cout << "Hardware threads: " << std::thread::hardware_concurrency() << std::endl;
-        std::cout << std::endl;
-        
-        total_tasks = num_tasks;
-        completed_tasks = 0;
-        task_timelines.clear();
-        task_timelines.resize(num_tasks);
-        
-        test_start_time = std::chrono::high_resolution_clock::now();
-        
-        // ✅ Post tất cả heavy tasks cùng lúc
-        for(int i = 0; i < num_tasks; i++) {
-            auto post_time = std::chrono::high_resolution_clock::now();
-            
-            {
-                std::lock_guard<std::mutex> lock(timeline_mutex);
-                task_timelines[i].task_id = i;
-                task_timelines[i].task_type = "HEAVY";
-                task_timelines[i].post_time = post_time;  // ✅ Thời điểm post
-            }
-            
-            std::cout << "Heavy Task " << i << " posted at " 
-                     << std::chrono::duration_cast<std::chrono::microseconds>(post_time - test_start_time).count() / 1000.0 << "ms" << std::endl;
-            
-            // Timeout 10 giây cho heavy tasks
-            auto promise = mSLLooper->postWork([this, i]() -> double {
-                auto computation_start = std::chrono::high_resolution_clock::now();
-                
-                std::cout << "Heavy Task " << i << " STARTED on worker thread " 
-                         << std::this_thread::get_id() << std::endl;
-                
-                double result = performHeavyComputation(i);
-                
-                auto computation_end = std::chrono::high_resolution_clock::now();
-                double computation_time = std::chrono::duration_cast<std::chrono::microseconds>(
-                    computation_end - computation_start).count() / 1000.0;
-                
-                // ✅ Lưu computation time vào timing
-                {
-                    std::lock_guard<std::mutex> lock(timeline_mutex);
-                    if (i < static_cast<int>(task_timelines.size())) {
-                        task_timelines[i].computation_ms = computation_time;
-                        task_timelines[i].thread_id = std::this_thread::get_id();
-                    }
-                }
-                
-                std::cout << "Heavy Task " << i << " computation FINISHED in " 
-                         << std::fixed << std::setprecision(2) << computation_time << "ms" << std::endl;
-                
-                return result;
-            }, std::chrono::milliseconds(10000));
-            
-            promise.then(mSLLooper, [this, i](double result) {
-                this->handleHeavyTaskComplete(i, result);
-            }).catchError(mSLLooper, [this, i](std::exception_ptr ex) {
-                std::cout << "Heavy Task " << i << " FAILED/TIMEOUT" << std::endl;
-                int completed = ++completed_tasks;
-                if (completed == total_tasks) {
-                    printDetailedResults();
-                    exportCSVData();
-                    mSLLooper->exit();
-                }
-            });
-            
-            // ❌ REMOVED delay - post tất cả tasks cùng lúc
-            // std::this_thread::sleep_for(std::chrono::milliseconds(200));
-        }
-        
-        std::cout << "All " << num_tasks << " heavy tasks posted" << std::endl;
-    }
-    
-    // Mixed task test
-    void startMixedTaskTest(int light_tasks = 5, int heavy_tasks = 3) {
+    // ✅ NEW: Mixed task test with simple parameters
+    void startMixedTaskTest(int heavy_tasks, int light_tasks) {
         int total = light_tasks + heavy_tasks;
         
         std::cout << "\n=== MIXED TASK RESPONSE TIME TEST ===" << std::endl;
-        std::cout << "Testing " << light_tasks << " light + " << heavy_tasks << " heavy tasks" << std::endl;
-        std::cout << "💡 Light: 200-500ms, 🔥 Heavy: 800-1500ms" << std::endl;
+        std::cout << "Testing " << heavy_tasks << " heavy + " << light_tasks << " light tasks" << std::endl;
+        std::cout << "🔥 Heavy: 800-1500ms, 💡 Light: 200-500ms" << std::endl;
         std::cout << "Total: " << total << " tasks" << std::endl;
+        std::cout << "PID: " << getpid() << std::endl;
+        std::cout << "Hardware threads: " << std::thread::hardware_concurrency() << std::endl;
         std::cout << std::endl;
         
         total_tasks = total;
@@ -186,7 +74,61 @@ public:
         
         int task_counter = 0;
         
-        // ✅ Post tất cả light tasks trước
+        // ✅ Post tất cả heavy tasks trước
+        for(int i = 0; i < heavy_tasks; i++) {
+            int heavy_id = task_counter++;
+            auto post_time = std::chrono::high_resolution_clock::now();
+            
+            {
+                std::lock_guard<std::mutex> lock(timeline_mutex);
+                task_timelines[heavy_id].task_id = heavy_id;
+                task_timelines[heavy_id].task_type = "HEAVY";
+                task_timelines[heavy_id].post_time = post_time;
+            }
+            
+            auto promise = mSLLooper->postWork([this, heavy_id]() -> double {
+                auto computation_start = std::chrono::high_resolution_clock::now();
+                
+                std::cout << "Heavy Task " << heavy_id << " STARTED on worker thread " 
+                         << std::this_thread::get_id() << std::endl;
+                
+                double result = performHeavyComputation(heavy_id);
+                
+                auto computation_end = std::chrono::high_resolution_clock::now();
+                double computation_time = std::chrono::duration_cast<std::chrono::microseconds>(
+                    computation_end - computation_start).count() / 1000.0;
+                
+                {
+                    std::lock_guard<std::mutex> lock(timeline_mutex);
+                    if (heavy_id < static_cast<int>(task_timelines.size())) {
+                        task_timelines[heavy_id].computation_ms = computation_time;
+                        task_timelines[heavy_id].thread_id = std::this_thread::get_id();
+                    }
+                }
+                
+                std::cout << "Heavy Task " << heavy_id << " computation FINISHED in " 
+                         << std::fixed << std::setprecision(2) << computation_time << "ms" << std::endl;
+                
+                return result;
+            }, std::chrono::milliseconds(10000));
+            
+            promise.then(mSLLooper, [this, heavy_id](double result) {
+                this->handleHeavyTaskComplete(heavy_id, result);
+            }).catchError(mSLLooper, [this, heavy_id](std::exception_ptr ex) {
+                std::cout << "Heavy Task " << heavy_id << " FAILED/TIMEOUT" << std::endl;
+                int completed = ++completed_tasks;
+                if (completed == total_tasks) {
+                    printDetailedResults();
+                    exportCSVData();
+                    mSLLooper->exit();
+                }
+            });
+            
+            std::cout << "Heavy Task " << heavy_id << " posted at " 
+                     << std::chrono::duration_cast<std::chrono::microseconds>(post_time - test_start_time).count() / 1000.0 << "ms" << std::endl;
+        }
+        
+        // ✅ Post tất cả light tasks
         for(int i = 0; i < light_tasks; i++) {
             int light_id = task_counter++;
             auto post_time = std::chrono::high_resolution_clock::now();
@@ -202,51 +144,8 @@ public:
                 this->executeLightTask(light_id);
             });
             
-            std::cout << "Light Task " << light_id << " posted" << std::endl;
-        }
-        
-        // ✅ Post tất cả heavy tasks
-        for(int i = 0; i < heavy_tasks; i++) {
-            int heavy_id = task_counter++;
-            auto post_time = std::chrono::high_resolution_clock::now();
-            
-            {
-                std::lock_guard<std::mutex> lock(timeline_mutex);
-                task_timelines[heavy_id].task_id = heavy_id;
-                task_timelines[heavy_id].task_type = "HEAVY";
-                task_timelines[heavy_id].post_time = post_time;
-            }
-            
-            auto promise = mSLLooper->postWork([this, heavy_id]() -> double {
-                auto computation_start = std::chrono::high_resolution_clock::now();
-                double result = performHeavyComputation(heavy_id);
-                auto computation_end = std::chrono::high_resolution_clock::now();
-                
-                {
-                    std::lock_guard<std::mutex> lock(timeline_mutex);
-                    if (heavy_id < static_cast<int>(task_timelines.size())) {
-                        task_timelines[heavy_id].computation_ms = std::chrono::duration_cast<std::chrono::microseconds>(
-                            computation_end - computation_start).count() / 1000.0;
-                        task_timelines[heavy_id].thread_id = std::this_thread::get_id();
-                    }
-                }
-                
-                return result;
-            }, std::chrono::milliseconds(10000));
-            
-            promise.then(mSLLooper, [this, heavy_id](double result) {
-                this->handleHeavyTaskComplete(heavy_id, result);
-            }).catchError(mSLLooper, [this, heavy_id](std::exception_ptr ex) {
-                std::cout << "Heavy Task " << heavy_id << " FAILED" << std::endl;
-                int completed = ++completed_tasks;
-                if (completed == total_tasks) {
-                    printDetailedResults();
-                    exportCSVData();
-                    mSLLooper->exit();
-                }
-            });
-            
-            std::cout << "Heavy Task " << heavy_id << " posted" << std::endl;
+            std::cout << "Light Task " << light_id << " posted at " 
+                     << std::chrono::duration_cast<std::chrono::microseconds>(post_time - test_start_time).count() / 1000.0 << "ms" << std::endl;
         }
         
         std::cout << "All mixed tasks posted!" << std::endl;
@@ -534,57 +433,39 @@ private:
 };
 
 int main(int argc, char* argv[]) {
-    if (argc < 2) {
-        std::cout << "SW Task Response Time Test - Fixed Total Response Measurement" << std::endl;
-        std::cout << "Usage:" << std::endl;
-        std::cout << "  " << argv[0] << " light [num]   # Light tasks (200-500ms each)" << std::endl;
-        std::cout << "  " << argv[0] << " heavy [num]   # Heavy tasks (800-1500ms each)" << std::endl;
-        std::cout << "  " << argv[0] << " mixed [L] [H] # Mixed tasks" << std::endl;
-        std::cout << std::endl;
+    if (argc < 3) {
+        std::cout << "SW Task Response Time Test" << std::endl;
+        std::cout << "Usage: " << argv[0] << " <heavy_tasks> <light_tasks>" << std::endl;
         std::cout << "Examples:" << std::endl;
-        std::cout << "  " << argv[0] << " light 8       # 8 light tasks" << std::endl;
-        std::cout << "  " << argv[0] << " heavy 5       # 5 heavy tasks" << std::endl;
-        std::cout << "  " << argv[0] << " mixed 6 3     # 6 light + 3 heavy" << std::endl;
+        std::cout << "  " << argv[0] << " 10 2     # 10 heavy + 2 light tasks" << std::endl;
+        std::cout << "  " << argv[0] << " 5 8      # 5 heavy + 8 light tasks" << std::endl;
+        std::cout << "  " << argv[0] << " 0 10     # Only 10 light tasks" << std::endl;
+        std::cout << "  " << argv[0] << " 5 0      # Only 5 heavy tasks" << std::endl;
         std::cout << std::endl;
+        std::cout << "🔥 Heavy tasks: 800-1500ms each (postWork)" << std::endl;
+        std::cout << "💡 Light tasks: 200-500ms each (post)" << std::endl;
         std::cout << "📊 Measures TOTAL RESPONSE TIME (post -> complete)" << std::endl;
         return 1;
     }
     
-    std::string test_mode = argv[1];
+    int heavy_tasks = std::atoi(argv[1]);
+    int light_tasks = std::atoi(argv[2]);
+    
+    if (heavy_tasks < 0 || heavy_tasks > 100 || light_tasks < 0 || light_tasks > 100) {
+        std::cerr << "Error: Tasks must be 0-100" << std::endl;
+        return 1;
+    }
+    
+    if (heavy_tasks == 0 && light_tasks == 0) {
+        std::cerr << "Error: At least one task required" << std::endl;
+        return 1;
+    }
     
     try {
         auto looper = std::make_shared<SLLooper>();
         auto handler = std::make_shared<ResponseTimeTestHandler>(looper);
         
-        if (test_mode == "light") {
-            int num_tasks = (argc >= 3) ? std::atoi(argv[2]) : 8;
-            if (num_tasks <= 0 || num_tasks > 100) {
-                std::cerr << "Light tasks: 1-100" << std::endl;
-                return 1;
-            }
-            handler->startLightTaskTest(num_tasks);
-        }
-        else if (test_mode == "heavy") {
-            int num_tasks = (argc >= 3) ? std::atoi(argv[2]) : 5;
-            if (num_tasks <= 0 || num_tasks > 100) {
-                std::cerr << "Heavy tasks: 1-100" << std::endl;
-                return 1;
-            }
-            handler->startHeavyTaskTest(num_tasks);
-        }
-        else if (test_mode == "mixed") {
-            int light_tasks = (argc >= 3) ? std::atoi(argv[2]) : 6;
-            int heavy_tasks = (argc >= 4) ? std::atoi(argv[3]) : 3;
-            if (light_tasks < 0 || light_tasks > 100 || heavy_tasks < 0 || heavy_tasks > 100) {
-                std::cerr << "Light: 0-100, Heavy: 0-100" << std::endl;
-                return 1;
-            }
-            handler->startMixedTaskTest(light_tasks, heavy_tasks);
-        }
-        else {
-            std::cerr << "Valid modes: light, heavy, mixed" << std::endl;
-            return 1;
-        }
+        handler->startMixedTaskTest(heavy_tasks, light_tasks);
         
         looper->loop();
         
