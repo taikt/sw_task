@@ -7,7 +7,7 @@ docs/html/
 docs/latex/
 
 # IDE files
-.vscode/
+# .vscode/
 .idea/
 *.swp
 *.swo
