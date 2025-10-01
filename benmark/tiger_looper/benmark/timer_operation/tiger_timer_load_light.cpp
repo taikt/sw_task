@@ -1,4 +1,9 @@
+// tiger_timer_load_light.cpp - Light Timer Load Test for Tiger Looper Framework
 #include "SLLooper.h"
+#include "Handler.h"
+#include "Message.h"
+#include "TimerManager.h"
+#include "Refbase.h"
 #include <iostream>
 #include <chrono>
 #include <vector>
@@ -10,22 +15,33 @@
 #include <map>
 #include <numeric>
 #include <algorithm>
-#include <unistd.h> 
+#include <memory>
 
 using namespace std::chrono_literals;
 
-class TimerLoadTest {
+// Message IDs for different timer types
+#define MSG_ONE_SHOT_TIMER_BASE 1000
+#define MSG_PERIODIC_TIMER_BASE 2000
+#define MSG_TIMER_CLEANUP 9999
+
+// Forward declaration
+class TigerTimerLoadTest;
+
+class LoadTestHandler : public Handler {
 private:
-    std::shared_ptr<SLLooper> looper;
-    std::vector<Timer> timers;
-    std::atomic<uint64_t> timer_fires{0};
-    std::atomic<bool> running{true};
+    TigerTimerLoadTest* mLoadTest;
     bool stress_mode = false;
     
 public:
-    void set_stress_mode(bool enable) { stress_mode = enable; }
+    LoadTestHandler(std::shared_ptr<SLLooper>& looper, TigerTimerLoadTest* loadTest) 
+        : Handler(looper), mLoadTest(loadTest) {}
     
-    // Reduced CPU work function - much lighter for single core usage
+    void setStressMode(bool enable) { stress_mode = enable; }
+    
+    void handleMessage(const std::shared_ptr<Message>& msg) override;
+    
+private:
+    // Light CPU work function - same workload as timer_load_light.cpp
     void light_cpu_work(int timer_id, int base_iterations = 1000) {  // Reduced from 8000 to 1000
         volatile double result = 0.0;
         int iterations = base_iterations;
@@ -65,31 +81,40 @@ public:
         volatile size_t hash = std::hash<std::string>{}(work_str);
         result += hash * 0.00001;
     }
+};
+
+class TigerTimerLoadTest {
+private:
+    std::shared_ptr<SLLooper> looper;
+    std::shared_ptr<LoadTestHandler> handler;
+    std::unique_ptr<TimerManager> timerManager;
+    std::vector<timer_t> activeTimers;
+    std::atomic<uint64_t> timer_fires{0};
+    std::atomic<bool> running{true};
+    bool stress_mode = false;
+    int periodic_count = 0;
+    
+public:
+    void set_stress_mode(bool enable) { 
+        stress_mode = enable; 
+        if (handler) {
+            handler->setStressMode(enable);
+        }
+    }
+    
+    void increment_timer_fires() { timer_fires++; }
     
     void create_one_shot_timers(int count) {
         std::cout << "Creating " << count << " one-shot timers..." << std::endl;
         
         for (int i = 0; i < count; ++i) {
-            auto timer = looper->addTimer([this, i]() {
-                timer_fires++;
-                
-                // Light CPU work
-                light_cpu_work(i, 1500);  // Reduced from 10000 to 1500
-                
-                // Reduced additional work frequency and size
-                if (i % 10 == 0) {  // Every 10th instead of every 5th
-                    std::vector<int> data(50);  // Reduced from 200 to 50
-                    std::iota(data.begin(), data.end(), i);
-                    volatile int sum = std::accumulate(data.begin(), data.end(), 0);
-                    
-                    // Lighter sort operation
-                    std::sort(data.begin(), data.end());  // Regular sort instead of reverse
-                    sum += data[0];
-                }
-                
-            }, 1000 + (i % 3000)); // 1-4 seconds spread (slightly longer intervals)
+            int messageId = MSG_ONE_SHOT_TIMER_BASE + i;
+            int delay = 1000 + (i % 3000); // 1-4 seconds spread (slightly longer intervals)
             
-            timers.push_back(std::move(timer));
+            timer_t timerId = timerManager->startTimer(messageId, delay);
+            if (timerId != (timer_t)0) {
+                activeTimers.push_back(timerId);
+            }
             
             // Print progress every 50 timers (more frequent updates)
             if ((i + 1) % 50 == 0) {
@@ -100,44 +125,18 @@ public:
     
     void create_periodic_timers(int count) {
         std::cout << "Creating " << count << " periodic timers..." << std::endl;
+        periodic_count = count;
         
+        // Note: TimerManager only supports one-shot timers
+        // For periodic behavior, we recreate timers in handleMessage
         for (int i = 0; i < count; ++i) {
-            auto timer = looper->addPeriodicTimer([this, i]() {
-                timer_fires++;
-                
-                // Lighter work with smaller multiplier
-                int work_multiplier = stress_mode ? 1.5 : 1;  // Reduced from 2 to 1.5
-                light_cpu_work(i, static_cast<int>(800 * work_multiplier));  // Reduced from 6000 to 800
-                
-                // Smaller data structure operations
-                std::map<int, double> temp_map;
-                for (int j = 0; j < 5; ++j) {  // Reduced from 20 to 5
-                    temp_map[j] = j * std::sin(i + j);
-                }
-                
-                // Lighter statistics calculation
-                double sum = 0.0;
-                for (const auto& pair : temp_map) {
-                    sum += pair.second * pair.second;
-                }
-                
-                // Shorter string building
-                std::string data_str = std::to_string(i) + "_" + std::to_string(static_cast<int>(sum));
-                volatile size_t str_hash = std::hash<std::string>{}(data_str);
-                
-                // Smaller matrix computation, less frequent
-                if (i % 5 == 0) {  // Every 5th instead of every 3rd
-                    volatile double matrix_sum = 0.0;
-                    for (int row = 0; row < 5; ++row) {  // Reduced from 10x10 to 5x5
-                        for (int col = 0; col < 5; ++col) {
-                            matrix_sum += std::sin(row) * std::cos(col) + (row * col);
-                        }
-                    }
-                }
-                
-            }, 150 + (i % 600)); // 150ms to 750ms intervals (longer intervals for less frequent execution)
+            int messageId = MSG_PERIODIC_TIMER_BASE + i;
+            int interval = 150 + (i % 600); // 150ms to 750ms intervals (longer intervals)
             
-            timers.push_back(std::move(timer));
+            timer_t timerId = timerManager->startTimer(messageId, interval);
+            if (timerId != (timer_t)0) {
+                activeTimers.push_back(timerId);
+            }
             
             if ((i + 1) % 25 == 0) {
                 std::cout << "Created " << (i + 1) << " periodic timers" << std::endl;
@@ -145,8 +144,23 @@ public:
         }
     }
     
+    void restart_periodic_timer(int messageId) {
+        if (!running) return;
+        
+        // Restart periodic timer
+        int timer_index = messageId - MSG_PERIODIC_TIMER_BASE;
+        if (timer_index >= 0 && timer_index < periodic_count) {
+            int interval = 150 + (timer_index % 600);
+            
+            timer_t timerId = timerManager->startTimer(messageId, interval);
+            if (timerId != (timer_t)0) {
+                activeTimers.push_back(timerId);
+            }
+        }
+    }
+    
     void run_test(int one_shot_count, int periodic_count, int duration_seconds) {
-        std::cout << "\n=== Light Timer Load Test (Single Core Friendly) ===" << std::endl;
+        std::cout << "\n=== Tiger Looper Light Timer Load Test (Single Core Friendly) ===" << std::endl;
         std::cout << "One-shot timers: " << one_shot_count << std::endl;
         std::cout << "Periodic timers: " << periodic_count << std::endl;
         std::cout << "Duration: " << duration_seconds << " seconds" << std::endl;
@@ -154,8 +168,11 @@ public:
         std::cout << "CPU target: ~50-90% single core usage" << std::endl;
         std::cout << "PID: " << getpid() << " (use this for monitoring)" << std::endl;
         
-        // Initialize looper
+        // Initialize tiger_looper components
         looper = std::make_shared<SLLooper>();
+        handler = std::make_shared<LoadTestHandler>(looper, this);
+        handler->setStressMode(stress_mode);
+        timerManager = std::make_unique<TimerManager>(handler);
         
         // Start event loop in separate thread
         std::thread looper_thread([this]() {
@@ -172,7 +189,7 @@ public:
         create_periodic_timers(periodic_count);
         
         std::cout << "\nAll timers created!" << std::endl;
-        std::cout << "Active timers: " << looper->getActiveTimerCount() << std::endl;
+        std::cout << "Total active timers: " << activeTimers.size() << std::endl;
         std::cout << "Expected CPU load: " << (stress_mode ? "60-90%" : "30-70%") << " single core" << std::endl;
         std::cout << "Starting monitoring phase..." << std::endl;
         
@@ -188,15 +205,22 @@ public:
             
             std::cout << "[" << elapsed << "s] "
                       << "Timer fires: " << timer_fires.load() 
-                      << ", Active: " << looper->getActiveTimerCount() 
+                      << ", Active timers: " << activeTimers.size()
                       << ", Rate: " << timer_fires.load() / (elapsed + 1) << " fires/sec"
                       << std::endl;
         }
         
         std::cout << "\nTest completed. Cleaning up..." << std::endl;
         
-        // Cleanup
-        timers.clear();
+        // Stop accepting new periodic timers
+        running = false;
+        
+        // Cleanup timers
+        for (auto timerId : activeTimers) {
+            timerManager->stopTimer(timerId);
+        }
+        activeTimers.clear();
+        
         looper->exit();
         looper_thread.join();
         
@@ -206,6 +230,69 @@ public:
         std::cout << "Light test completed successfully!" << std::endl;
     }
 };
+
+// Implementation of LoadTestHandler::handleMessage
+void LoadTestHandler::handleMessage(const std::shared_ptr<Message>& msg) {
+    if (!mLoadTest) return;
+    
+    mLoadTest->increment_timer_fires();
+    
+    if (msg->what >= MSG_ONE_SHOT_TIMER_BASE && msg->what < MSG_PERIODIC_TIMER_BASE) {
+        // One-shot timer callback
+        int timer_id = msg->what - MSG_ONE_SHOT_TIMER_BASE;
+        
+        // Light CPU work
+        light_cpu_work(timer_id, 1500);  // Reduced from 10000 to 1500
+        
+        // Reduced additional work frequency and size
+        if (timer_id % 10 == 0) {  // Every 10th instead of every 5th
+            std::vector<int> data(50);  // Reduced from 200 to 50
+            std::iota(data.begin(), data.end(), timer_id);
+            volatile int sum = std::accumulate(data.begin(), data.end(), 0);
+            
+            // Lighter sort operation
+            std::sort(data.begin(), data.end());  // Regular sort instead of reverse
+            sum += data[0];
+        }
+        
+    } else if (msg->what >= MSG_PERIODIC_TIMER_BASE && msg->what < MSG_TIMER_CLEANUP) {
+        // Periodic timer callback
+        int timer_id = msg->what - MSG_PERIODIC_TIMER_BASE;
+        
+        // Lighter work with smaller multiplier
+        int work_multiplier = stress_mode ? 1.5 : 1;  // Reduced from 2 to 1.5
+        light_cpu_work(timer_id, static_cast<int>(800 * work_multiplier));  // Reduced from 6000 to 800
+        
+        // Smaller data structure operations
+        std::map<int, double> temp_map;
+        for (int j = 0; j < 5; ++j) {  // Reduced from 20 to 5
+            temp_map[j] = j * std::sin(timer_id + j);
+        }
+        
+        // Lighter statistics calculation
+        double sum = 0.0;
+        for (const auto& pair : temp_map) {
+            sum += pair.second * pair.second;
+        }
+        
+        // Shorter string building
+        std::string data_str = std::to_string(timer_id) + "_" + std::to_string(static_cast<int>(sum));
+        volatile size_t str_hash = std::hash<std::string>{}(data_str);
+        
+        // Smaller matrix computation, less frequent
+        if (timer_id % 5 == 0) {  // Every 5th instead of every 3rd
+            volatile double matrix_sum = 0.0;
+            for (int row = 0; row < 5; ++row) {  // Reduced from 10x10 to 5x5
+                for (int col = 0; col < 5; ++col) {
+                    matrix_sum += std::sin(row) * std::cos(col) + (row * col);
+                }
+            }
+        }
+        
+        // Restart this periodic timer
+        mLoadTest->restart_periodic_timer(msg->what);
+    }
+}
 
 void signal_handler(int signal) {
     std::cout << "\nReceived signal " << signal << ". Exiting gracefully..." << std::endl;
@@ -228,7 +315,7 @@ int main(int argc, char* argv[]) {
     if (argc >= 4) duration = std::atoi(argv[3]);
     if (argc >= 5) stress_mode = (std::string(argv[4]) == "stress");
     
-    std::cout << "Light Timer Load Test - PID: " << getpid() << std::endl;
+    std::cout << "Tiger Looper Light Timer Load Test - PID: " << getpid() << std::endl;
     std::cout << "Usage: " << argv[0] << " [one_shot_count] [periodic_count] [duration_seconds] [stress]" << std::endl;
     std::cout << "Single Core Examples:" << std::endl;
     std::cout << "  " << argv[0] << " 100 20 30          # Light load (~30-50% CPU)" << std::endl;
@@ -236,9 +323,14 @@ int main(int argc, char* argv[]) {
     std::cout << "  " << argv[0] << " 400 50 60 stress   # Heavy load (~70-90% CPU)" << std::endl;
     std::cout << std::endl;
     
-    TimerLoadTest test;
-    test.set_stress_mode(stress_mode);
-    test.run_test(one_shot_count, periodic_count, duration);
+    try {
+        TigerTimerLoadTest test;
+        test.set_stress_mode(stress_mode);
+        test.run_test(one_shot_count, periodic_count, duration);
+    } catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+        return 1;
+    }
     
     return 0;
 }

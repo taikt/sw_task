@@ -1,0 +1,22 @@
+{
+  "servers": {
+    "lgedv": {
+      "command": "/home/worker/src/codefun/deepl/mcp_server/venv/bin/codeguard",
+      "args": ["--transport", "stdio"],
+      "env": {  
+        "premium":"true",   
+        "src_dir": "/home/worker/src/code_test/src",
+        "custom_path": "/home/worker/src/codefun/tmp/CustomRule.md",
+        "reset_cache": "true",
+        "prompt_lang": "vi",
+        "report_dir": "/home/worker/src/code_test/report",
+        "module_api": "/home/worker/src/tsu/nad/LGE/tiger-src/servicelayer/core/services",
+        "req_dir": "/home/worker/src/codefun/tsu/honda/spec/ecall/regulation",
+        "framework_dir": "/home/worker/src/tsu/nad/LGE/tiger-src/servicelayer/core/framework/utils"
+      }
+    },
+    "markitdown": {
+      "command": "/home/worker/src/markitdown/mcp/venv/bin/markitdown-mcp"
+    }
+  }
+}
