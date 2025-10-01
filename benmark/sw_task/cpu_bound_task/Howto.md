@@ -1,6 +1,3 @@
-# Chạy toàn bộ benchmark suite
-./run_cpu_benchmark.sh
-
 # Hoặc chạy manual từng test
 python3 -m venv venv
 source venv/bin/activate

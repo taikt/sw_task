@@ -98,3 +98,6 @@ target_link_libraries(exception_zero pthread)
 add_executable(timer_vector timer_vector.cpp ${SW_TASK_SRC})
 target_link_libraries(timer_vector pthread)
 
+add_executable(task_runner task_runner.cpp ${SW_TASK_SRC})
+target_link_libraries(task_runner pthread)
+
