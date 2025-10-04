@@ -131,7 +131,7 @@
     "C_Cpp.intelliSenseEngine": "default",
     "C_Cpp.errorSquiggles": "enabled",
     "files.exclude": {
-        "**/build": true,
+        // "**/build": true,
         "**/out": true,
         "**/venv": true,
         "**/__pycache__": true

@@ -13,10 +13,16 @@ set(LOOPER_SRC
     src/TimerManager.cpp
 )
 
-# add_executable(testMessage examples/testMessage.cpp ${LOOPER_SRC})
-# add_executable(testTimer examples/testTimer.cpp ${LOOPER_SRC})
-add_executable(tiger_timer_load examples/tiger_timer_load.cpp ${LOOPER_SRC})
+add_executable(testMessage examples/testMessage.cpp ${LOOPER_SRC})
+target_include_directories(testMessage PRIVATE include)
 
-# target_include_directories(testMessage PRIVATE include)
-# target_include_directories(testTimer PRIVATE include)
-target_include_directories(tiger_timer_load PRIVATE include)
+add_executable(testTimer examples/testTimer.cpp ${LOOPER_SRC})
+target_include_directories(testTimer PRIVATE include)
+
+add_executable(tiger_task_runner examples/task_runner.cpp ${LOOPER_SRC})
+target_include_directories(tiger_task_runner PRIVATE include)
+
+add_executable(tiger examples/all_test.cpp ${LOOPER_SRC})
+target_include_directories(tiger PRIVATE include)
+
+
