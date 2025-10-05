@@ -180,7 +180,7 @@ package "SW Task Framework" #LightYellow {
             rectangle "State<T>" as StateMgr
         }
         
-        package "co_await System" #LightSalmon {
+        package "Coroutines System" #LightSalmon {
             rectangle "Task<T>" as TaskMgr
             rectangle "WorkAwaitable<T>" as WorkAwaitable
             rectangle "PostAwaitable<T>" as PostAwaitable

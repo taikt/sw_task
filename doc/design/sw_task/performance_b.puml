@@ -16,7 +16,7 @@ package "SW Task Framework" #LightBlue {
             rectangle "State<std::monostate>" as StateMono <<specialization>>
         }
         
-        package "co_await" #LightGreen {
+        package "Coroutines" #LightGreen {
             rectangle "Task<T>" as TaskMgr
             rectangle "WorkAwaitable<T>" as WorkAwaitable
             rectangle "PostAwaitable<T>" as PostAwaitable

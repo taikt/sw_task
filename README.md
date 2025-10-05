@@ -31,7 +31,7 @@ SW Task Framework is a modern event loop framework designed to efficiently and s
 | **EventQueue**      | High-performance Event queue       | Priority handling, delayed execution, templates  |
 | **TimerManager**    | Precise timer management           | One-shot & periodic timers, microsecond precision|
 | **Promise System**  | Modern async pattern (JS A+)       | Chainable continuations, error handling         |
-| **co_await System** | C++20 coroutines integration       | Natural async/await syntax, suspend/resume     |
+| **Coroutines System** | C++20 coroutines integration       | Natural async/await syntax, suspend/resume     |
 | **Handler Pattern** | Message-based communication        | Android-style messaging, flexible dispatching    |
 | **CPU Task Executor** | CPU-bound task isolation         | Timeout protection                              |
 
