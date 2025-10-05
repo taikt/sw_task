@@ -91,7 +91,7 @@ Main Thread              Event Loop Thread           CPU-bound Task thread
 | Category           | API Name                        | Description                                                                                  |
 |--------------------|---------------------------------|----------------------------------------------------------------------------------------------|
 | Coroutine Creation | Task<T> function_name()         | Create a coroutine function that returns `Task<T>`. Use `co_return` to return values.       |
-|                    | task.start()                    | Start execution of a coroutine task. Must be called after task creation.                    |
+|                    | task.start()                    | Start execution of a coroutine task. Must be called after task. creation.                    |
 |                    | task.done()                     | Check if coroutine has completed execution.                                                  |
 | co_await Operations| co_await awaitWork(func)        | Execute a CPU-bound function on background thread. Suspends coroutine until completion.     |
 |                    | co_await awaitPost(func)        | Execute a function on main event loop thread. Suspends coroutine until completion.          |
