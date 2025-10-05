@@ -1,12 +1,18 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.20)
 project(sw_task_examples)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # cmake -DCMAKE_BUILD_TYPE=Debug ..  (enable DEBUG macro)
 # cmake -DCMAKE_BUILD_TYPE=Release .. (disable DEBUG macro)
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")
+
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fcoroutines -std=c++20")
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fcoroutines-ts -std=c++20")
+endif()
 
 include_directories(../include)
 
@@ -59,52 +65,65 @@ if(NOT ENABLE_ALL_DEBUG AND NOT ENABLE_TIMER_DEBUG AND NOT ENABLE_SLLOOPER_DEBUG
     message(STATUS "Production build - no debug logging")
 endif()
 
-add_executable(timer_load timer_load.cpp ${SW_TASK_SRC})
-target_link_libraries(timer_load pthread)
+# add_executable(timer_load timer_load.cpp ${SW_TASK_SRC})
+# target_link_libraries(timer_load pthread)
 
-add_executable(fetch_data fetch_data.cpp ${SW_TASK_SRC})
-target_link_libraries(fetch_data pthread)
+# add_executable(fetch_data fetch_data.cpp ${SW_TASK_SRC})
+# target_link_libraries(fetch_data pthread)
 
-add_executable(post_work post_work.cpp ${SW_TASK_SRC})
-target_link_libraries(post_work pthread)
+# add_executable(post_work post_work.cpp ${SW_TASK_SRC})
+# target_link_libraries(post_work pthread)
 
-add_executable(handle_message handle_message.cpp ${SW_TASK_SRC})
-target_link_libraries(handle_message pthread)
+# add_executable(handle_message handle_message.cpp ${SW_TASK_SRC})
+# target_link_libraries(handle_message pthread)
 
-add_executable(fetch_data_OOP fetch_data_OOP.cpp ${SW_TASK_SRC})
-target_link_libraries(fetch_data_OOP pthread)
+# add_executable(fetch_data_OOP fetch_data_OOP.cpp ${SW_TASK_SRC})
+# target_link_libraries(fetch_data_OOP pthread)
 
-add_executable(timer timer.cpp ${SW_TASK_SRC})
-target_link_libraries(timer pthread)
+# add_executable(timer timer.cpp ${SW_TASK_SRC})
+# target_link_libraries(timer pthread)
 
-add_executable(timer_bind timer_bind.cpp ${SW_TASK_SRC})
-target_link_libraries(timer_bind pthread)
+# add_executable(timer_bind timer_bind.cpp ${SW_TASK_SRC})
+# target_link_libraries(timer_bind pthread)
 
-add_executable(timer_lambda timer_lambda.cpp ${SW_TASK_SRC})
-target_link_libraries(timer_lambda pthread)
+# add_executable(timer_lambda timer_lambda.cpp ${SW_TASK_SRC})
+# target_link_libraries(timer_lambda pthread)
 
-add_executable(exception_out exception_out.cpp ${SW_TASK_SRC})
-target_link_libraries(exception_out pthread)
+# add_executable(exception_out exception_out.cpp ${SW_TASK_SRC})
+# target_link_libraries(exception_out pthread)
 
-add_executable(exception_throw exception_throw.cpp ${SW_TASK_SRC})
-target_link_libraries(exception_throw pthread)
+# add_executable(exception_throw exception_throw.cpp ${SW_TASK_SRC})
+# target_link_libraries(exception_throw pthread)
 
-add_executable(exception_fetch exception_fetch.cpp ${SW_TASK_SRC})
-target_link_libraries(exception_fetch pthread)
+# add_executable(exception_fetch exception_fetch.cpp ${SW_TASK_SRC})
+# target_link_libraries(exception_fetch pthread)
 
-add_executable(exception_zero exception_zero.cpp ${SW_TASK_SRC})
-target_link_libraries(exception_zero pthread)
+# add_executable(exception_zero exception_zero.cpp ${SW_TASK_SRC})
+# target_link_libraries(exception_zero pthread)
 
-add_executable(timer_vector timer_vector.cpp ${SW_TASK_SRC})
-target_link_libraries(timer_vector pthread)
+# add_executable(timer_vector timer_vector.cpp ${SW_TASK_SRC})
+# target_link_libraries(timer_vector pthread)
 
-add_executable(task_runner task_runner.cpp ${SW_TASK_SRC})
-target_link_libraries(task_runner pthread)
+# add_executable(task_runner task_runner.cpp ${SW_TASK_SRC})
+# target_link_libraries(task_runner pthread)
 
-add_executable(response_time response_time.cpp ${SW_TASK_SRC})
-target_link_libraries(response_time pthread)
+# add_executable(response_time response_time.cpp ${SW_TASK_SRC})
+# target_link_libraries(response_time pthread)
 
-add_executable(sw all_test.cpp ${SW_TASK_SRC})
-target_link_libraries(sw pthread)
+# add_executable(sw all_test.cpp ${SW_TASK_SRC})
+# target_link_libraries(sw pthread)
 
+add_executable(co_await_example co_await.cpp ${SW_TASK_SRC})
+target_link_libraries(co_await_example pthread)
 
+add_executable(fetch_coawait fetch_coawait.cpp ${SW_TASK_SRC})
+target_link_libraries(fetch_coawait pthread)
+
+add_executable(coawait_simple coawait_simple.cpp ${SW_TASK_SRC})
+target_link_libraries(coawait_simple pthread)
+
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    target_compile_options(co_await_example PRIVATE -fcoroutines -std=c++20)
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    target_compile_options(co_await_example PRIVATE -fcoroutines-ts -std=c++20)
+endif()

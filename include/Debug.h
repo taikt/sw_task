@@ -352,4 +352,7 @@
   * @endcode
   */
  #define EventQueue_INFO_STREAM(stream_expr) \
-     std::cout << "[EventQueue] " << stream_expr << std::endl
+    do { \
+        std::cout << "[EventQueue] " << stream_expr << std::endl; \
+    } while(0)
+    

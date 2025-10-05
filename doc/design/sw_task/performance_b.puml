@@ -8,10 +8,22 @@ rectangle "Client Application" as Client
 package "SW Task Framework" #LightBlue {
     
     package "Async Helper" #Pink {
-        rectangle "Promise<T>" as PromiseMgr
-        rectangle "State<T>" as StateMgr
-        rectangle "Promise<void>" as PromiseVoid <<specialization>>
-        rectangle "State<std::monostate>" as StateMono <<specialization>>
+        
+        package "Promise" #LightYellow {
+            rectangle "Promise<T>" as PromiseMgr
+            rectangle "State<T>" as StateMgr
+            rectangle "Promise<void>" as PromiseVoid <<specialization>>
+            rectangle "State<std::monostate>" as StateMono <<specialization>>
+        }
+        
+        package "co_await" #LightGreen {
+            rectangle "Task<T>" as TaskMgr
+            rectangle "WorkAwaitable<T>" as WorkAwaitable
+            rectangle "PostAwaitable<T>" as PostAwaitable
+            rectangle "DelayAwaitable" as DelayAwaitable
+            rectangle "WorkAwaitable<void>" as WorkAwaitableVoid <<specialization>>
+            rectangle "PostAwaitable<void>" as PostAwaitableVoid <<specialization>>
+        }
     }
 
     package "Main Thread Event Loop" {
@@ -23,14 +35,28 @@ package "SW Task Framework" #LightBlue {
 ' External relationships - uses dependency only
 Client ..> Looper : uses
 Client ..> PromiseMgr : uses
+Client ..> TaskMgr : uses
 
 ' Internal framework relationships - uses dependency only
 Looper ..> Queue : uses
 Queue ..> PromiseMgr : uses
+Queue ..> WorkAwaitable : uses
+Queue ..> PostAwaitable : uses
 
+' Promise System internal relationships
 PromiseMgr ..> StateMgr : uses
 PromiseVoid ..> PromiseMgr : uses
 StateMono ..> StateMgr : uses
+
+' Co_Await System internal relationships
+TaskMgr ..> WorkAwaitable : uses
+TaskMgr ..> PostAwaitable : uses
+TaskMgr ..> DelayAwaitable : uses
+WorkAwaitable ..> Looper : uses
+PostAwaitable ..> Looper : uses
+DelayAwaitable ..> Looper : uses
+WorkAwaitableVoid ..> WorkAwaitable : uses
+PostAwaitableVoid ..> PostAwaitable : uses
 
 @enduml
 
@@ -199,5 +225,140 @@ MainLoop --> MQ : "9: schedule execution"
 MQ --> MainLoop : "10: pollNext()"
 MainLoop --> State : "11: executeContinuation/executeErrorHandler()"
 State --> Client : "12: invoke callbacks"
+
+@enduml
+
+
+@startuml
+'title "SW Task Framework - co_await Creation and Execution Flow"
+
+rectangle "ClientApplication" as Client
+
+package "SW Task Framework" #LightBlue {
+    
+    package "Main Thread" {
+        rectangle "SLLooper" as Looper
+        rectangle "EventQueue" as MQ
+        rectangle "Main Thread Event Loop" as MainLoop
+    }
+    
+    package "Async Helper" {
+        rectangle "Task<T>" as Task
+        rectangle "PostAwaitable<T>" as Awaitable
+    }
+}
+
+' co_await Creation and Setup Flow
+Client --> Looper : "1: awaitPost"
+Looper --> Awaitable : "2: new PostAwaitable<T>()"
+Awaitable --> Task : "3: create awaitable wrapper"
+Task --> Client : "4: return PostAwaitable<T>"
+
+' co_await Suspension Flow
+Client --> Awaitable : "5: co_await"
+Awaitable --> Client : "6: return false (not ready)"
+Client --> Awaitable : "7: await_suspend"
+Awaitable --> Looper : "8: post"
+
+' Async Execution Flow
+Looper --> MQ : "9: enqueue(task)"
+MQ --> MainLoop : "10: schedule execution"
+MainLoop --> MQ : "11: pollNext()"
+MainLoop --> Client : "12: execute user function"
+Client --> MainLoop : "13: return result"
+MainLoop --> Awaitable : "14: setResult(value)"
+
+' Coroutine Resume Flow
+Awaitable --> MainLoop : "15: resume(coroutine_handle)"
+MainLoop --> Client : "16: resume coroutine execution"
+Client --> Awaitable : "17: await_resume()"
+Awaitable --> Client : "18: return result"
+
+@enduml
+
+
+@startuml
+'title "SW Task Framework - co_await Execution Flow (coawait_simple.cpp)"
+
+autonumber
+
+participant "Client Application" as Client
+
+box "SW Task Framework" #LightBlue
+    participant "SLLooper" as Looper
+    participant "EventQueue" as MQ
+    participant "PostAwaitable" as Awaitable
+    participant "Event Loop Thread" as EventThread
+end box
+
+== co_await awaitPost Execution ==
+Client -> Looper : awaitPost(fetchData)
+activate Looper
+
+Looper -> Awaitable : new PostAwaitable<int>(looper, fetchData)
+activate Awaitable
+Awaitable --> Looper : return PostAwaitable<int>
+
+Looper --> Client : return PostAwaitable<int>
+deactivate Looper
+
+Client -> Awaitable : co_await (await_ready())
+activate Awaitable
+Awaitable --> Client : return false
+note right of Awaitable : Not ready, need suspension
+
+Client -> Awaitable : await_suspend(coroutine_handle)
+note right of Client : **SUSPEND POINT**\nSync call to suspend
+
+Awaitable -> Looper : post(lambda_wrapper)
+activate Looper
+note right of Looper : Sync call to post task
+
+Looper -> MQ : enqueue(lambda_wrapper)
+activate MQ
+MQ --> Looper : queued
+deactivate MQ
+
+Looper --> Awaitable : posted
+deactivate Looper
+
+Awaitable --> Client : suspended
+deactivate Awaitable
+note right of Client : **COROUTINE SUSPENDED**\nWaiting for completion
+
+== Event Loop Thread Execution ==
+activate MQ
+MQ ->> EventThread : execute_queued_task()
+activate EventThread
+note right of EventThread : **Async execution**\nOn background thread
+
+EventThread -> Client : fetchData()
+activate Client
+note right of Client : User function execution
+
+Client --> EventThread : return 123
+deactivate Client
+
+EventThread -> Awaitable : setResult(123)
+activate Awaitable
+Awaitable --> EventThread : stored
+deactivate Awaitable
+
+EventThread ->> Client : resume(coroutine_handle)
+note right of Client : **RESUME POINT**\nAsync callback to resume
+deactivate EventThread
+deactivate MQ
+
+== Client Coroutine Completion ==
+activate Client
+note right of Client : **COROUTINE RESUMED**\nContinue from suspend point
+
+Client -> Awaitable : await_resume()
+activate Awaitable
+Awaitable --> Client : return result
+deactivate Awaitable
+
+Client -> Client : "Result from awaitPost: 123"
+deactivate Client
 
 @enduml

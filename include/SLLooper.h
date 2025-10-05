@@ -15,11 +15,17 @@
  #include <type_traits> 
  #include "Timer.h"
  #include "EventQueue.h"
- 
+ #include "Task.h"
+ #include "Awaitable.h"
+  
  namespace swt {
  class TimerManager;
  template<typename T> class Promise;
  
+ template<typename T> class WorkAwaitable;
+ class DelayAwaitable;
+ template<typename T> class PostAwaitable;
+
  /**
   * @class SLLooper
   * @brief Central event loop coordinator providing asynchronous task execution and timer management
@@ -30,6 +36,7 @@
   * - **Asynchronous execution**: Function posting with futures and promises
   * - **CPU-bound task handling**: Specialized executor for long-running tasks
   * - **Thread safety**: Safe cross-thread communication via message passing
+  * - **Coroutine support**: Modern C++20 co_await integration
   * 
   * The SLLooper follows the event loop pattern, continuously processing queued
   * tasks and timer events in a single thread while providing thread-safe APIs
@@ -40,19 +47,22 @@
   * - **RAII resource management**: Automatic cleanup of timers and tasks
   * - **Boost-style timer API**: Familiar interface for timer operations
   * - **Template-based**: Type-safe function posting with perfect forwarding
+  * - **Coroutine integration**: Native co_await support for modern async patterns
   * 
   * @code{.cpp}
   * // Create event loop
   * auto looper = std::make_shared<SLLooper>();
   * 
-  * // Post async function
+  * // Traditional async API
   * auto future = looper->post([](int x) { return x * 2; }, 21);
   * int result = future.get(); // result = 42
   * 
-  * // Add timer
-  * auto timer = looper->addTimer([]() { 
-  *     std::cout << "Timer fired!" << std::endl; 
-  * }, 1000ms);
+  * // Coroutine API (C++20)
+  * Task<int> asyncWork() {
+  *     int result = co_await looper->awaitWork([]() { return 42; });
+  *     co_await looper->awaitDelay(1000);  // Wait 1 second
+  *     co_return result;
+  * }
   * 
   * // CPU-bound task with promise
   * auto promise = looper->postWork([]() { 
@@ -67,7 +77,7 @@
   * @note Thread-safe for task submission, but not for direct member access
   * @warning Must be created as shared_ptr due to enable_shared_from_this usage
   * 
-  * @see \ref swt::EventQueue "EventQueue", \ref swt::TimerManager "TimerManager", \ref swt::Timer "Timer", \ref swt::Promise "Promise"
+  * @see \ref swt::EventQueue "EventQueue", \ref swt::TimerManager "TimerManager", \ref swt::Timer "Timer", \ref swt::Promise "Promise", \ref swt::Task "Task"
   */
  class SLLooper : public std::enable_shared_from_this<SLLooper>
  {
@@ -328,6 +338,112 @@
      auto postWork(Func&& func, std::chrono::milliseconds timeout) 
          -> swt::Promise<decltype(func())>;
  
+     // ========== COROUTINE API ==========
+     
+     /**
+      * @brief Execute function on background thread (co_await version)
+      * 
+      * Executes a function asynchronously on a background thread and resumes
+      * the awaiting coroutine on the main thread when complete. Provides
+      * seamless integration between coroutines and thread pool execution.
+      * 
+      * @tparam Func Function type (auto-deduced from lambda/function)
+      * @param func Function to execute on background thread
+      * @return WorkAwaitable<ReturnType> Awaitable object for co_await
+      * 
+      * @code{.cpp}
+      * Task<int> example() {
+      *     // Heavy computation on background thread
+      *     int result = co_await looper->awaitWork([]() {
+      *         return fibonacci(40);
+      *     });
+      *     
+      *     // Execution resumes on main thread
+      *     std::cout << "Result: " << result << std::endl;
+      *     co_return result;
+      * }
+      * @endcode
+      * 
+      * @note Function executes on background thread
+      * @note Coroutine resumes on main thread (SLLooper thread)
+      * @note Exception safety: exceptions are propagated to co_await site
+      * @note Thread-safe: can be called from any thread
+      * 
+      * @see \ref swt::WorkAwaitable "WorkAwaitable", \ref swt::Task "Task"
+      */
+     template<typename Func>
+     auto awaitWork(Func&& func) -> WorkAwaitable<decltype(func())> {
+         return WorkAwaitable<decltype(func())>(shared_from_this(), std::forward<Func>(func));
+     }
+ 
+     /**
+      * @brief Delay execution (co_await version)
+      * 
+      * Suspends the current coroutine for the specified duration and resumes
+      * execution after the delay. Uses SLLooper's timer system internally
+      * for precise timing.
+      * 
+      * @param delayMs Delay in milliseconds
+      * @return DelayAwaitable Awaitable object for co_await
+      * 
+      * @code{.cpp}
+      * Task<void> example() {
+      *     std::cout << "Starting delay..." << std::endl;
+      *     
+      *     co_await looper->awaitDelay(1000);  // Wait 1 second
+      *     
+      *     std::cout << "Delay completed!" << std::endl;
+      * }
+      * @endcode
+      * 
+      * @note Non-blocking: doesn't block the event loop during delay
+      * @note Precise timing: uses Linux timerfd for accurate delays
+      * @note Cancellation: delay is cancelled if Task is destroyed
+      * @note Thread-safe: can be called from any thread
+      * 
+      * @see \ref swt::DelayAwaitable "DelayAwaitable", \ref swt::TimerManager "TimerManager"
+      */
+     DelayAwaitable awaitDelay(int delayMs) {
+         return DelayAwaitable(shared_from_this(), delayMs);
+     }
+ 
+     /**
+      * @brief Execute function on main thread (co_await version)
+      * 
+      * Posts a function to execute on the main thread (SLLooper thread) and
+      * suspends the current coroutine until execution completes. Useful for
+      * updating UI or accessing thread-local resources from coroutines.
+      * 
+      * @tparam Func Function type (auto-deduced from lambda/function)
+      * @param func Function to execute on main thread
+      * @return PostAwaitable<ReturnType> Awaitable object for co_await
+      * 
+      * @code{.cpp}
+      * Task<void> example() {
+      *     // Background work
+      *     auto data = co_await looper->awaitWork([]() {
+      *         return fetchDataFromNetwork();
+      *     });
+      *     
+      *     // Update UI on main thread
+      *     co_await looper->awaitPost([data]() {
+      *         updateUI(data);
+      *     });
+      * }
+      * @endcode
+      * 
+      * @note Function executes on main thread (SLLooper thread)
+      * @note Immediate execution: no additional threading overhead
+      * @note Exception safety: exceptions are propagated to co_await site
+      * @note Thread-safe: can be called from any thread
+      * 
+      * @see \ref swt::PostAwaitable "PostAwaitable", \ref swt::Task "Task"
+      */
+     template<typename Func>
+     auto awaitPost(Func&& func) -> PostAwaitable<decltype(func())> {
+         return PostAwaitable<decltype(func())>(shared_from_this(), std::forward<Func>(func));
+     }
+ 
      /**
       * @brief Run one iteration of the event loop
       * @return true if loop should continue, false to exit
@@ -577,3 +693,4 @@
  
  // Include template implementations
  #include "SLLooper.tpp"
+ #include "Awaitable.h"
