@@ -145,7 +145,6 @@ end note
 
 @enduml
 
-
 @startuml
 
 rectangle "Client Application" as Client 
@@ -175,14 +174,26 @@ package "SW Task Framework" #LightYellow {
     }
     
     package "Async Helper" #Pink {
-        rectangle "Promise<T>" as PromiseMgr
-        rectangle "State<T>" as StateMgr
+        
+        package "Promise System" #LightCyan {
+            rectangle "Promise<T>" as PromiseMgr
+            rectangle "State<T>" as StateMgr
+        }
+        
+        package "co_await System" #LightSalmon {
+            rectangle "Task<T>" as TaskMgr
+            rectangle "WorkAwaitable<T>" as WorkAwaitable
+            rectangle "PostAwaitable<T>" as PostAwaitable
+            rectangle "DelayAwaitable" as DelayAwaitable
+        }
     }
 }
 
 ' Pure "uses" dependencies only
 Client ..> Looper : uses
 Client ..> Handler : uses
+Client ..> PromiseMgr : uses
+Client ..> TaskMgr : uses
 
 Looper ..> Queue : uses
 Looper ..> TimerMgr : uses
@@ -201,16 +212,16 @@ TimerMgr ..> EpollFd : uses
 CpuExec ..> PromiseMgr : uses
 CpuExec ..> AsyncWorker : uses
 
+' Promise System dependencies
 PromiseMgr ..> StateMgr : uses
 StateMgr ..> Queue : uses
 
-' ' Legend
-' legend right
-'     | ..> | Uses dependency |
-'     | <<Thread>> | Background thread |
-'     | <<Linux Kernel>> | OS integration |
-' endlegend
-
-
+' co_await System dependencies
+TaskMgr ..> WorkAwaitable : uses
+TaskMgr ..> PostAwaitable : uses
+TaskMgr ..> DelayAwaitable : uses
+WorkAwaitable ..> Looper : uses
+PostAwaitable ..> Looper : uses
+DelayAwaitable ..> TimerMgr : uses
 
 @enduml

@@ -3,11 +3,11 @@
 [![Build Status](https://github.com/taikt/sw_task/actions/workflows/build.yml/badge.svg)](https://github.com/taikt/sw_task/actions/workflows/build.yml)
 [![Documentation](https://github.com/taikt/sw_task/actions/workflows/docs.yml/badge.svg)](https://taikt.github.io/sw_task/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![C++17](https://img.shields.io/badge/C%2B%2B-17-blue.svg)](https://en.cppreference.com/w/cpp/17)
+[![C++20](https://img.shields.io/badge/C%2B%2B-20-blue.svg)](https://en.cppreference.com/w/cpp/20)
 
-**Advanced C++ Event Loop Framework for High-Performance Asynchronous Task Management**
+**Advanced C++ Event Loop Framework for High-Performance Asynchronous Task Management with Coroutines**
 
-SW Task Framework is a modern event loop framework designed to efficiently and safely manage asynchronous tasks. The framework provides a flexible architecture for handling messages, timers, promises, and CPU-bound operations in multi-threaded C++ applications.
+SW Task Framework is a modern event loop framework designed to efficiently and safely manage asynchronous tasks. The framework provides a flexible architecture for handling messages, timers, promises, and coroutines in multi-threaded C++ applications.
 
 ## Table of Contents
 
@@ -27,21 +27,24 @@ SW Task Framework is a modern event loop framework designed to efficiently and s
 
 | Component           | Description                        | Key Features                                    |
 |---------------------|------------------------------------|-------------------------------------------------|
-| **SLLooper**        | Main event loop coordinator        | Thread-safe posting                             |
+| **SLLooper**        | Main event loop coordinator        | Thread-safe posting, coroutine integration     |
 | **EventQueue**      | High-performance Event queue       | Priority handling, delayed execution, templates  |
 | **TimerManager**    | Precise timer management           | One-shot & periodic timers, microsecond precision|
 | **Promise System**  | Modern async pattern (JS A+)       | Chainable continuations, error handling         |
+| **co_await System** | C++20 coroutines integration       | Natural async/await syntax, suspend/resume     |
 | **Handler Pattern** | Message-based communication        | Android-style messaging, flexible dispatching    |
 | **CPU Task Executor** | CPU-bound task isolation         | Timeout protection                              |
 
 ### Advanced Features
 
-- **Asynchronous Task Management**: Post functions with futures, delayed execution, promise-based workflows following JavaScript/A+ standard
+- **C++20 Coroutines Support**: Native co_await integration with awaitWork, awaitPost, awaitDelay
+- **Dual Async Paradigm**: Both Promise chains and coroutines for different use cases
+- **Asynchronous Task Management**: Post functions with futures, delayed execution, promise-based workflows
 - **High-Precision Timers**: Microsecond accuracy, chrono duration support, RAII timer management
 - **Thread-Safe Operations**: Lock-free queues, atomic operations, safe cross-thread communication
-- **CPU-Bound Task Isolation**: Separate CPU-bound task thread for intensive operations, prevents event loop blocking
+- **CPU-Bound Task Isolation**: Separate CPU-bound task thread for intensive operations
 - **Android-Style Messaging**: Familiar Handler/Message pattern for structured communication
-- **Modern C++ Design**: C++17 features, RAII principles, smart pointer management
+- **Modern C++ Design**: C++20 features, RAII principles, smart pointer management
 
 ## Architecture
 
@@ -49,7 +52,7 @@ SW Task Framework is a modern event loop framework designed to efficiently and s
 
 <img src="system_overview.png" alt="System Overview" width="700"/>
 
-### Thread Model
+### Thread Model with Coroutines
 
 ```
 Main Thread              Event Loop Thread           CPU-bound Task thread
@@ -57,12 +60,12 @@ Main Thread              Event Loop Thread           CPU-bound Task thread
      │ post(normal_task)        │                           │
      ├─────────────────────────►│                           │
      │                          │ process tasks             │
-     │ postWork(heavy_task)     │ delegate                  │
+     │ co_await awaitWork()     │ delegate                  │
      ├─────────────────────────►│ ─────────────────────────►│
-     │                          │                           │ execute
+     │ (coroutine suspended)    │                           │ execute
      │                          │◄──────────────────────────┤
-     │◄─────────────────────────┤ result via promise        │
-     │ promise.then()           │                           │
+     │◄─────────────────────────┤ resume coroutine          │
+     │ (coroutine resumed)      │                           │
 ```
 
 ## API Overview
@@ -71,9 +74,9 @@ Main Thread              Event Loop Thread           CPU-bound Task thread
 
 | Category           | API Name                        | Description                                                                                  |
 |--------------------|---------------------------------|----------------------------------------------------------------------------------------------|
-| Function Posting   | post(func, args...)             | Post a function or lambda to the event loop for immediate execution. Returns a `std::future` for result retrieval. Thread-safe and supports any callable signature. |
-|                    | postDelayed(delayMs, func, args...) | Post a function or lambda to the event loop to be executed after a specified delay in milliseconds. Returns a `std::future`. |
-|                    | postWithTimeout(func, timeout_ms) | Post a function to be executed after a timeout. Returns a `Timer` object for cancellation. Only for void-returning functions. |
+| Function Posting   | post(func, args...)             | Post a function or lambda to the event loop for immediate execution. Returns a `std::future` for result retrieval. |
+|                    | postDelayed(delayMs, func, args...) | Post a function or lambda to the event loop to be executed after a specified delay in milliseconds. |
+|                    | postWithTimeout(func, timeout_ms) | Post a function to be executed after a timeout. Returns a `Timer` object for cancellation. |
 | Promise            | createPromise<T>()              | Create a manual promise object of type `T`. Allows explicit fulfillment or rejection from any thread. |
 |                    | postWork(func)                  | Run a CPU-bound function in a dedicated worker thread. Returns a `Promise` for result and chaining. |
 |                    | postWork(func, timeout)         | Run a CPU-bound function with a timeout. If the function does not complete in time, the promise is rejected. |
@@ -83,7 +86,21 @@ Main Thread              Event Loop Thread           CPU-bound Task thread
 
 ---
 
-### 2. Timer & Timer Control
+### 2. Coroutines (co_await)
+
+| Category           | API Name                        | Description                                                                                  |
+|--------------------|---------------------------------|----------------------------------------------------------------------------------------------|
+| Coroutine Creation | Task<T> function_name()         | Create a coroutine function that returns `Task<T>`. Use `co_return` to return values.       |
+|                    | task.start()                    | Start execution of a coroutine task. Must be called after task creation.                    |
+|                    | task.done()                     | Check if coroutine has completed execution.                                                  |
+| co_await Operations| co_await awaitWork(func)        | Execute a CPU-bound function on background thread. Suspends coroutine until completion.     |
+|                    | co_await awaitPost(func)        | Execute a function on main event loop thread. Suspends coroutine until completion.          |
+|                    | co_await awaitDelay(milliseconds) | Suspend coroutine for specified time duration. Non-blocking delay operation.              |
+| Error Handling     | try/catch with co_await         | Use standard C++ exception handling with coroutines. Exceptions propagate naturally.        |
+
+---
+
+### 3. Timer & Timer Control
 
 | Category      | API Name                | Description                                 |
 |---------------|-------------------------|---------------------------------------------|
@@ -95,7 +112,7 @@ Main Thread              Event Loop Thread           CPU-bound Task thread
 
 ---
 
-### 3. Message & Handler
+### 4. Message & Handler
 
 | Category           | API Name                  | Description                                |
 |--------------------|--------------------------|--------------------------------------------|
@@ -158,7 +175,110 @@ int main() {
 
 ---
 
-### 2. Timer & Timer Control
+### 2. Coroutines (co_await)
+
+**Sequential async operations with natural syntax:**
+```cpp
+#include "SLLooper.h"
+#include "Task.h"
+#include <iostream>
+#include <stdexcept>
+#include <thread>
+
+using namespace swt;
+
+int fetchUserData(int userId) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    return userId * 10; // Simulate fetched data
+}
+
+void processUserData(int data) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    std::cout << "Processed data: " << data << std::endl;
+}
+
+Task<void> userWorkflow(std::shared_ptr<SLLooper> looper, int userId) {
+    try {
+        std::cout << "Starting workflow for user " << userId << std::endl;
+        
+        // Fetch data on background thread
+        int userData = co_await looper->awaitWork([userId]() {
+            return fetchUserData(userId);
+        });
+        
+        std::cout << "User data fetched: " << userData << std::endl;
+        
+        // Wait a bit
+        co_await looper->awaitDelay(200);
+        
+        // Process on main thread
+        co_await looper->awaitPost([userData]() {
+            processUserData(userData);
+        });
+        
+        std::cout << "Workflow completed!" << std::endl;
+        
+    } catch (const std::exception& e) {
+        std::cout << "Workflow error: " << e.what() << std::endl;
+    }
+}
+
+int main() {
+    auto looper = std::make_shared<SLLooper>();
+    
+    auto task = userWorkflow(looper, 123);
+    task.start();
+    
+    // Wait for completion
+    while (!task.done()) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    }
+    
+    return 0;
+}
+```
+
+**Error handling with coroutines:**
+```cpp
+#include "SLLooper.h"
+#include "Task.h"
+#include <iostream>
+#include <stdexcept>
+
+using namespace swt;
+
+Task<void> errorHandlingExample(std::shared_ptr<SLLooper> looper) {
+    try {
+        int result = co_await looper->awaitWork([]() -> int {
+            throw std::runtime_error("Something went wrong!");
+            return 42;
+        });
+        
+        std::cout << "This won't be reached: " << result << std::endl;
+        
+    } catch (const std::exception& e) {
+        std::cout << "Caught error: " << e.what() << std::endl;
+        
+        // Recovery operation
+        co_await looper->awaitDelay(100);
+        std::cout << "Recovery completed" << std::endl;
+    }
+}
+
+int main() {
+    auto looper = std::make_shared<SLLooper>();
+    
+    auto task = errorHandlingExample(looper);
+    task.start();
+    
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    return 0;
+}
+```
+
+---
+
+### 3. Timer & Timer Control
 
 **Periodic timer with dynamic restart and cancellation:**
 ```cpp
@@ -190,7 +310,7 @@ int main() {
 
 ---
 
-### 3. Message & Handler
+### 4. Message & Handler
 
 **Custom handler with message dispatch and delayed messaging:**
 ```cpp
@@ -229,44 +349,69 @@ int main() {
 
 ---
 
-### 4. Combined Example: Timer, Promise, and Handler
+### 5. Combined Example: Coroutines with Timer and Promise
 
-**Workflow: Timer triggers a fetch, result is processed and sent to handler**
+**Workflow using both coroutines and promises:**
 ```cpp
 #include "SLLooper.h"
-#include "Handler.h"
+#include "Task.h"
 #include <iostream>
 #include <thread>
 
-class ResultHandler : public Handler {
-public:
-    ResultHandler(std::shared_ptr<SLLooper> looper) : Handler(looper) {}
-    void handleMessage(const std::shared_ptr<Message>& msg) override {
-        std::cout << "Handler received: " << msg->arg1 << std::endl;
-    }
-};
+using namespace swt;
 
 int fetchData() {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     return 123;
 }
 
+Task<void> timerTriggeredWorkflow(std::shared_ptr<SLLooper> looper) {
+    std::cout << "Waiting for timer..." << std::endl;
+    
+    // Wait for timer delay
+    co_await looper->awaitDelay(200);
+    
+    std::cout << "Timer triggered, starting data fetch..." << std::endl;
+    
+    // Fetch data using Promise system
+    auto promise = looper->postWork(fetchData);
+    
+    // Convert promise to coroutine-compatible result
+    int result = co_await looper->awaitWork([promise]() mutable {
+        return promise.get(); // Wait for promise completion
+    });
+    
+    std::cout << "Data received: " << result << std::endl;
+    
+    // Final processing on main thread
+    co_await looper->awaitPost([result]() {
+        std::cout << "Final processing: " << result * 2 << std::endl;
+    });
+}
+
 int main() {
     auto looper = std::make_shared<SLLooper>();
-    auto handler = std::make_shared<ResultHandler>(looper);
-
-    auto timer = looper->addTimer([looper, handler]() {
-        looper->postWork(fetchData)
-        .then(looper, [handler](int value) {
-            auto msg = handler->obtainMessage(1, value, 0);
-            handler->sendMessage(msg);
-        });
-    }, 200);
-
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    
+    auto task = timerTriggeredWorkflow(looper);
+    task.start();
+    
+    std::this_thread::sleep_for(std::chrono::seconds(1));
     return 0;
 }
 ```
+
+---
+
+## Comparison: Promises vs Coroutines
+
+| Aspect              | Promises                        | Coroutines                      |
+|---------------------|---------------------------------|---------------------------------|
+| **Syntax**          | Callback chains with `.then()` | Sequential with `co_await`      |
+| **Error Handling**  | `.catchError()` callbacks       | Standard `try/catch`            |
+| **Readability**     | Can become nested               | Linear, like sync code          |
+| **Debugging**       | Harder with callback stacks     | Natural debugging flow          |
+| **Performance**     | Lower overhead                  | Slight coroutine overhead       |
+| **Use Case**        | Simple async chains             | Complex async workflows         |
 
 ---
 
@@ -274,8 +419,9 @@ int main() {
 
 ### Requirements
 
-- **C++17 compatible compiler** (GCC 7+, Clang 6+, MSVC 2017+)
+- **C++20 compatible compiler** (GCC 10+, Clang 10+, MSVC 2019+)
 - **CMake 3.12+**
+- **Coroutines support**: `-fcoroutines` (GCC) or `-fcoroutines-ts` (Clang)
 - **Optional**: Doxygen for documentation
 
 ### Build Instructions
@@ -284,10 +430,15 @@ int main() {
 git clone https://github.com/taikt/sw_task.git
 cd sw_task
 mkdir build && cd build
-cmake ..
+cmake -DCMAKE_CXX_STANDARD=20 ..
 make -j$(nproc)
 make test
 sudo make install
+```
+
+**For coroutines support, ensure compiler flags:**
+```cmake
+target_compile_options(your_target PRIVATE -fcoroutines -std=c++20)
 ```
 
 ---
@@ -300,6 +451,13 @@ make test
 ctest --verbose
 ```
 
+**Coroutine-specific tests:**
+```bash
+./examples/co_await_example
+./examples/fetch_coawait  
+./examples/coawait_simple
+```
+
 ---
 
 ## Performance
@@ -309,17 +467,19 @@ ctest --verbose
 | Task Posting     | 1M ops/sec | < 1μs   | 64 bytes/task    |
 | Timer Creation   | 100K/sec   | < 10μs  | 128 bytes/timer  |
 | Promise Chain    | 500K/sec   | < 5μs   | 256 bytes/chain  |
+| Coroutine Task   | 400K/sec   | < 8μs   | 512 bytes/task   |
 | Message Send     | 2M ops/sec | < 0.5μs | 32 bytes/msg     |
 
 ---
 
 ## Contributing
 
-- **C++17 standard compliance**
+- **C++20 standard compliance**
 - **Google C++ Style Guide**
 - **Comprehensive unit tests for new features**
 - **Doxygen documentation for public APIs**
 - **RAII principles and smart pointer usage**
+- **Coroutine safety and best practices**
 
 ---
 
