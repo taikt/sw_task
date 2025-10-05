@@ -301,18 +301,20 @@ Awaitable --> Looper : return PostAwaitable<int>
 
 Looper --> Client : return PostAwaitable<int>
 deactivate Looper
-
-Client -> Awaitable : co_await (await_ready())
+note over Client, Awaitable : Compiler automatically calls await_ready(), await_suspend()
+' Compiler invokes coroutine protocol
+Client -> Awaitable : [compiler] await_ready()
 activate Awaitable
 Awaitable --> Client : return false
-note right of Awaitable : Not ready, need suspension
+note right of Awaitable : Not ready, coroutine will suspend
 
-Client -> Awaitable : await_suspend(coroutine_handle)
-note right of Client : **SUSPEND POINT**\nSync call to suspend
+
+Client -[#gray,dashed]> Awaitable : [compiler] await_suspend(coroutine_handle)
+activate Awaitable
+note right of Awaitable : SUSPEND POINT\nCoroutine paused
 
 Awaitable -> Looper : post(lambda_wrapper)
 activate Looper
-note right of Looper : Sync call to post task
 
 Looper -> MQ : enqueue(lambda_wrapper)
 activate MQ
@@ -324,18 +326,15 @@ deactivate Looper
 
 Awaitable --> Client : suspended
 deactivate Awaitable
-note right of Client : **COROUTINE SUSPENDED**\nWaiting for completion
+note right of Client : COROUTINE SUSPENDED\nWaiting for completion
 
 == Event Loop Thread Execution ==
 activate MQ
 MQ ->> EventThread : execute_queued_task()
 activate EventThread
-note right of EventThread : **Async execution**\nOn background thread
 
 EventThread -> Client : fetchData()
 activate Client
-note right of Client : User function execution
-
 Client --> EventThread : return 123
 deactivate Client
 
@@ -345,20 +344,91 @@ Awaitable --> EventThread : stored
 deactivate Awaitable
 
 EventThread ->> Client : resume(coroutine_handle)
-note right of Client : **RESUME POINT**\nAsync callback to resume
+note right of Client : RESUME POINT\nAsync callback to resume
 deactivate EventThread
 deactivate MQ
 
-== Client Coroutine Completion ==
-activate Client
-note right of Client : **COROUTINE RESUMED**\nContinue from suspend point
+note over Client, Awaitable : Compiler automatically calls await_resume()
 
-Client -> Awaitable : await_resume()
+Client -[#gray,dashed]> Awaitable : [compiler] await_resume()
 activate Awaitable
 Awaitable --> Client : return result
 deactivate Awaitable
 
 Client -> Client : "Result from awaitPost: 123"
 deactivate Client
+
+@enduml
+
+
+
+
+@startuml
+'title "SW Task Framework - Coroutines Feature Component & Connector View"
+
+!define COMPONENT_COLOR #E6F3FF
+!define CONNECTOR_COLOR #FFE6E6
+!define INTERFACE_COLOR #E6FFE6
+
+'package "Client Applications" as ClientApps {
+    component [Client Application] as CoroutineApp COMPONENT_COLOR
+'}
+
+package "SW Task Framework" as Framework #LightBlue {
+    
+    package "Coroutine API Layer" as APILayer {
+        interface "co_await API" as CoAwaitAPI INTERFACE_COLOR
+        
+        component [Task<T>\n(Coroutine Wrapper)] as Task COMPONENT_COLOR
+        component [SLLooper\n(awaitWork, awaitPost, awaitDelay)] as SLLooper COMPONENT_COLOR
+        
+        Task -up- CoAwaitAPI
+        SLLooper -up- CoAwaitAPI
+    }
+    
+    package "Awaitable Layer" as AwaitableLayer {
+        component [WorkAwaitable<T>\n(Background Thread)] as WorkAwaitable COMPONENT_COLOR
+        component [PostAwaitable<T>\n(Main Thread)] as PostAwaitable COMPONENT_COLOR
+        component [DelayAwaitable\n(Timer Delay)] as DelayAwaitable COMPONENT_COLOR
+        
+        interface "Coroutine Protocol\n(await_ready, await_suspend, await_resume)" as CoroutineProtocol INTERFACE_COLOR
+        WorkAwaitable -up- CoroutineProtocol
+        PostAwaitable -up- CoroutineProtocol
+        DelayAwaitable -up- CoroutineProtocol
+    }
+    
+    package "Execution Layer" as ExecutionLayer {
+        component [Event Loop Thread] as EventLoop COMPONENT_COLOR
+        component [CPU-bound Task Thread] as CpuThread COMPONENT_COLOR
+        component [Timer Manager] as TimerManager COMPONENT_COLOR
+        component [Coroutine Resumer] as CoroutineResumer COMPONENT_COLOR
+        
+        interface "Thread Execution" as ThreadExec INTERFACE_COLOR
+        interface "Timer Operations" as TimerOps INTERFACE_COLOR
+        EventLoop -up- ThreadExec
+        CpuThread -up- ThreadExec
+        TimerManager -up- TimerOps
+    }
+}
+
+' Client to API
+CoroutineApp ..> CoAwaitAPI : "co_await usage"
+
+' API creates Awaitables
+SLLooper ..> CoroutineProtocol : "creates awaitables"
+Task ..> CoroutineProtocol : "manages coroutine lifecycle"
+
+' Awaitable to Execution routing
+WorkAwaitable ..> ThreadExec : "execute on CPU thread"
+PostAwaitable ..> ThreadExec : "execute on main thread"
+DelayAwaitable ..> TimerOps : "schedule timer"
+
+' Execution completion flow
+EventLoop --> CoroutineResumer : "resume from main thread tasks"
+CpuThread --> CoroutineResumer : "resume from background tasks"
+TimerManager --> CoroutineResumer : "resume from timer expiry"
+
+' Resume triggers await_resume
+CoroutineResumer ..> CoroutineProtocol : "await_resume()"
 
 @enduml

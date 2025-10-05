@@ -1,0 +1,93 @@
+
+@startuml
+!define COMPONENT rectangle
+
+COMPONENT [Client Application] as Client 
+' COMPONENT [epoll + timerfd] as EpollFd <<Linux Kernel>>
+
+package "SW Task Framework" #LightBlue {
+    
+    package "Main Thread Event Loop" {
+        COMPONENT [SLLooper] as Looper <<Facade>>
+        COMPONENT [EventQueue] as Queue <<Queue>>
+        COMPONENT [QueueItem] as QueueItem <<Union Type>>
+    }
+    
+    package "Message System" #LightYellow {
+        COMPONENT [Handler] as Handler <<Abstract>>
+        COMPONENT [Message] as Message <<Data>>
+    }
+    
+    package "Timer System" #LightGreen {
+        COMPONENT [TimerManager] as TimerMgr <<Manager>>
+        COMPONENT [Timer] as Timer <<RAII>>
+    }
+    
+    package "CPU-bound Task Execution" #Orange {
+        COMPONENT [CpuTaskExecutor] as CpuExec <<Static Methods>>
+        COMPONENT [CPUTaskThread] as AsyncWorker <<Thread>>
+    }
+    
+    package "Async Helper" #Pink {
+        
+        package "Promise System" #LightCyan {
+            COMPONENT [Promise<T>] as PromiseMgr <<Template>>
+            COMPONENT [State<T>] as StateMgr <<Template>>
+        }
+        
+        package "Coroutines System" #LightSalmon {
+            COMPONENT [Task<T>] as TaskMgr <<Coroutine>>
+            COMPONENT [WorkAwaitable<T>] as WorkAwaitable <<Awaitable>>
+            COMPONENT [PostAwaitable<T>] as PostAwaitable <<Awaitable>>
+            COMPONENT [DelayAwaitable] as DelayAwaitable <<Awaitable>>
+        }
+    }
+}
+
+' Main flow connections
+Client --> Looper : post() / postWork() / co_await
+Client --> Handler : sendMessage()
+Client --> TaskMgr : create Task<T>
+Looper --> Queue : enqueue QueueItem
+Queue --> Looper : poll QueueItem
+Looper --> Client : execute callbacks
+
+' QueueItem relationships
+Queue --> QueueItem : contains
+QueueItem --> Message : holds Message
+QueueItem --> PromiseMgr : holds packaged_task
+QueueItem --> WorkAwaitable : holds coroutine_handle
+
+' Message system flow
+Handler --> Message : obtainMessage()
+Handler --> Queue : sendMessage()
+Queue --> Handler : dispatchMessage()
+
+' CPU task flow (Promise System)
+Looper --> CpuExec : postWork(heavyTask)
+CpuExec --> PromiseMgr : create Promise<T>
+PromiseMgr --> StateMgr : contains State<T>
+CpuExec --> AsyncWorker : std::async(task)
+AsyncWorker --> StateMgr : setValue(result)
+StateMgr --> Queue : post continuation
+
+' Coroutines flow
+Looper --> WorkAwaitable : awaitWork(func)
+Looper --> PostAwaitable : awaitPost(func)
+Looper --> DelayAwaitable : awaitDelay(ms)
+WorkAwaitable --> AsyncWorker : execute on background
+PostAwaitable --> Queue : execute on main thread
+DelayAwaitable --> TimerMgr : schedule delay
+
+' Timer flow
+Client --> Looper : addTimer()
+Looper --> TimerMgr : createTimer()
+TimerMgr --> Timer : return RAII object
+' TimerMgr --> EpollFd : timerfd_create/epoll_wait
+' EpollFd --> TimerMgr : timer expiration events
+TimerMgr --> Queue : post timer callbacks
+
+' Promise chaining
+PromiseMgr --> PromiseMgr : .then() / .catchError()
+
+@enduml

@@ -10,6 +10,9 @@ class SLLooper {
     +createPromise<T>() : kt::Promise<T>
     +postWork(Func) : kt::Promise
     +postWork(Func, timeout) : kt::Promise
+    +awaitWork(func) : WorkAwaitable<T>
+    +awaitPost(func) : PostAwaitable<T>
+    +awaitDelay(milliseconds) : DelayAwaitable
     +loop() : bool
     +exit() : void
     +addTimer(callback, delay_ms) : Timer
@@ -35,8 +38,100 @@ SLLooper o-- "1" EventQueue
 SLLooper o-- "1" TimerManager
 SLLooper ..> Timer
 SLLooper ..> kt::Promise
+SLLooper ..> WorkAwaitable
+SLLooper ..> PostAwaitable
+SLLooper ..> DelayAwaitable
 @enduml
 
+@startuml
+namespace swt {
+    class "Task<T>" as Task {
+        +Task(std::coroutine_handle<promise_type>)
+        +Task(Task&&) noexcept
+        +~Task()
+        +start() : void
+        +done() : bool
+        +get() : T
+        +get_exception() : std::exception_ptr
+        --
+        -mHandle : std::coroutine_handle<promise_type>
+        -mStarted : bool
+        <<move-only>>
+        <<coroutine>>
+    }
+    
+    class "Task<T>::promise_type" as PromiseType {
+        +get_return_object() : Task<T>
+        +initial_suspend() : std::suspend_always
+        +final_suspend() noexcept : std::suspend_always
+        +return_value(T value) : void
+        +return_void() : void
+        +unhandled_exception() : void
+        --
+        -mValue : std::optional<T>
+        -mException : std::exception_ptr
+    }
+}
+
+Task o-- PromiseType
+Task ..> std::coroutine_handle
+Task ..> WorkAwaitable
+Task ..> PostAwaitable
+Task ..> DelayAwaitable
+@enduml
+
+@startuml
+namespace swt {
+    class "WorkAwaitable<T>" as WorkAwaitable {
+        +WorkAwaitable(looper, func)
+        +await_ready() : bool
+        +await_suspend(handle) : void
+        +await_resume() : T
+        --
+        -mLooper : std::shared_ptr<SLLooper>
+        -mFunc : std::function<T()>
+        -mResult : std::optional<T>
+        -mException : std::exception_ptr
+        -mReady : bool
+        <<awaitable>>
+    }
+    
+    class "PostAwaitable<T>" as PostAwaitable {
+        +PostAwaitable(looper, func)
+        +await_ready() : bool
+        +await_suspend(handle) : void
+        +await_resume() : T
+        --
+        -mLooper : std::shared_ptr<SLLooper>
+        -mFunc : std::function<T()>
+        -mResult : std::optional<T>
+        -mException : std::exception_ptr
+        -mReady : bool
+        <<awaitable>>
+    }
+    
+    class DelayAwaitable {
+        +DelayAwaitable(looper, milliseconds)
+        +await_ready() : bool
+        +await_suspend(handle) : void
+        +await_resume() : void
+        --
+        -mLooper : std::shared_ptr<SLLooper>
+        -mMilliseconds : int
+        -mTimer : Timer
+        -mReady : bool
+        <<awaitable>>
+    }
+}
+
+WorkAwaitable ..> SLLooper
+PostAwaitable ..> SLLooper
+DelayAwaitable ..> SLLooper
+DelayAwaitable ..> Timer
+WorkAwaitable ..> std::coroutine_handle
+PostAwaitable ..> std::coroutine_handle
+DelayAwaitable ..> std::coroutine_handle
+@enduml
 
 @startuml
 namespace kt {
@@ -66,6 +161,7 @@ class EventQueue {
     +enqueueFunction()
     +enqueueFunctionDelayed()
     +enqueuePromise()
+    +enqueueCoroutine()
     +pollNext()
     +quit()
     +hasMessage()
@@ -83,6 +179,7 @@ EventQueue o-- "deque" QueueItem
 EventQueue o-- Message
 EventQueue o-- Handler
 EventQueue o-- kt::Promise
+EventQueue ..> std::coroutine_handle
 @enduml
 
 @startuml
@@ -90,6 +187,7 @@ namespace kt {
     class CpuTaskExecutor {
         +executeAsync(resultLooper, func)
         +executeAsync(resultLooper, func, timeout)
+        +executeCoroutine(resultLooper, func, handle)
         --
         <<static utility>>
     }
@@ -102,6 +200,8 @@ namespace kt {
 CpuTaskExecutor ..> Promise
 CpuTaskExecutor ..> SLLooper
 CpuTaskExecutor ..> CpuTaskTimeoutException
+CpuTaskExecutor ..> WorkAwaitable
+CpuTaskExecutor ..> std::coroutine_handle
 CpuTaskTimeoutException --|> std::runtime_error
 @enduml
 
@@ -130,12 +230,12 @@ State ..> std::optional
 State ..> std::function
 @enduml
 
-
 @startuml
 class TimerManager {
     +TimerManager(looper)
     +~TimerManager()
     +createTimer(callback, delay_ms, periodic, cancelled)
+    +createCoroutineTimer(handle, delay_ms, cancelled)
     +cancelTimer(id)
     +hasTimer(id)
     +restartTimer(id, delay_ms)
@@ -158,13 +258,15 @@ class TimerInfo {
     +interval_ms
     +id
     +cancelled
+    +coroutine_handle
 }
 
 TimerManager "1" o-- "*" TimerInfo
 TimerManager ..> SLLooper
 TimerManager ..> Timer
+TimerManager ..> DelayAwaitable
+TimerManager ..> std::coroutine_handle
 @enduml
-
 
 @startuml
 class Handler {
