@@ -7,6 +7,7 @@ using namespace swt;
 
 int main() {
     auto looper = std::make_shared<SLLooper>();
+    std::cout << "Timer backend: " << TimerManager::getBackendName() << std::endl;
     
     // ✅ CORRECT: addTimer với chrono
     auto timer1 = looper->addTimer([]() {

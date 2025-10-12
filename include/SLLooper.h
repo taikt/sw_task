@@ -17,9 +17,9 @@
  #include "EventQueue.h"
  #include "Task.h"
  #include "Awaitable.h"
-  
+ #include "TimerManager.h" 
+
  namespace swt {
- class TimerManager;
  template<typename T> class Promise;
  
  template<typename T> class WorkAwaitable;
@@ -464,7 +464,15 @@
      void exit();
  
      // ========== TIMER API (Boost-style) ==========
- 
+     
+     /**
+      * @brief Get timer backend name
+      * @return Backend name string
+      */
+     static const char* getTimerBackend() {
+        return TimerManager::getBackendName();
+     }
+
      /**
       * @brief Add one-shot timer with millisecond precision
       * @param callback Function to call when timer expires
