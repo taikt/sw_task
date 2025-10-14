@@ -1,0 +1,136 @@
+@startuml
+'title "SW Task Framework - TimerManager SIGEV_THREAD Backend"
+
+autonumber
+
+participant "Client Application" as Client
+
+
+box "SW Task Framework" #LightBlue
+    participant "SLLooper\n(Event Loop Main thread)" as MainLoop
+    participant "Timer" as Timer
+    participant "TimerManager" as TimerMgr
+    participant "EventQueue" as MQ
+end box
+
+box "Linux Kernel" #LightYellow
+    participant "Linux Kernel API" as LinuxKernel
+    participant "Callback Thread\n(sigev_thread)" as CallbackThread
+end box
+
+== Timer Creation (SIGEV_THREAD Backend) ==
+Client -> MainLoop : addTimer(callback, delay_ms)
+activate MainLoop
+note right of Client : Create timer with callback
+
+MainLoop -> MainLoop : initializeTimerManager()
+
+MainLoop -> TimerMgr : createTimerInternal(callback, delay_ms, false, &cancelled)
+activate TimerMgr
+
+TimerMgr -> TimerMgr : generate unique TimerId
+TimerMgr -> TimerMgr : mTimers[TimerId] = TimerInfo{timer, callback, periodic, cancelled}
+
+TimerMgr -> TimerMgr : sTimerManagerMap[TimerId] = this
+
+TimerMgr -> LinuxKernel : timer_create(CLOCK_MONOTONIC, &sigev, &timer_t)
+activate LinuxKernel
+note right of LinuxKernel : sigev.sigev_notify = SIGEV_THREAD\nsigev.sigev_notify_function = sigevTimerCallback\nsigev.sigev_value.sival_ptr = TimerId
+LinuxKernel --> TimerMgr : return timer_t handle
+
+TimerMgr -> LinuxKernel : timer_settime(timer_t, itimerspec)
+note right of LinuxKernel : Configure timer delay/interval
+LinuxKernel --> TimerMgr : timer configured and started
+deactivate LinuxKernel
+
+TimerMgr -> TimerMgr : mTimers[TimerId].timer = timer_t
+TimerMgr --> MainLoop : return TimerId
+deactivate TimerMgr
+
+MainLoop -> Timer : new Timer(TimerId, weak_ptr<SLLooper>)
+activate Timer
+MainLoop -> TimerMgr : updateCancelledPtr(TimerId, &timer.mCancelled)
+Timer --> Client : return Timer object
+deactivate Timer
+deactivate MainLoop
+
+== Timer Expiration (System Creates Thread) ==
+LinuxKernel -> CallbackThread : create new thread for callback
+activate CallbackThread
+note right of CallbackThread : Kernel creates dedicated\nthread for this timer expiration
+
+
+CallbackThread -> TimerMgr : sigevTimerCallback(sigval{TimerId})
+activate TimerMgr
+TimerMgr -> TimerMgr : sTimerManagerMap.find(TimerId)
+TimerMgr -> TimerMgr : find mTimers[TimerId]
+
+alt Timer exists and not cancelled
+    TimerMgr -> MainLoop : post(callback) to main thread
+    activate MainLoop
+    MainLoop -> MQ : enqueueFunction(callback)
+    activate MQ
+    MQ --> MainLoop : callback scheduled
+    deactivate MQ
+    deactivate MainLoop
+    
+    alt One-shot timer
+        TimerMgr -> LinuxKernel : timer_delete(timer_t)
+        activate LinuxKernel
+        LinuxKernel --> TimerMgr : timer deleted
+        deactivate LinuxKernel
+        
+        TimerMgr -> TimerMgr : mTimers.erase(TimerId)
+    TimerMgr -> TimerMgr : sTimerManagerMap.erase(TimerId)
+    else Periodic timer
+        note right of TimerMgr : Keep timer active\nfor next period
+    end
+else Timer cancelled
+    TimerMgr -> LinuxKernel : timer_delete(timer_t)
+    TimerMgr -> TimerMgr : mTimers.erase(TimerId)
+    TimerMgr -> TimerMgr : sTimerManagerMap.erase(TimerId)
+end
+
+deactivate TimerMgr
+CallbackThread --> LinuxKernel : thread exits
+deactivate CallbackThread
+
+== Callback Execution (Main Thread) ==
+MainLoop -> MQ : pollNext()
+activate MainLoop
+activate MQ
+MQ --> MainLoop : QueueItem (timer callback)
+deactivate MQ
+
+MainLoop -> Client : execute timer callback
+activate Client
+note right of Client : Callback executed\non main thread (thread-safe)
+Client --> MainLoop : callback complete
+deactivate Client
+deactivate MainLoop
+
+== Timer Cancellation ==
+Client -> Timer : cancel()
+activate Timer
+Timer -> MainLoop : cancelTimerInternal(TimerId)
+activate MainLoop
+MainLoop -> TimerMgr : cancelTimer(TimerId)
+activate TimerMgr
+
+TimerMgr -> LinuxKernel : timer_delete(timer_t)
+activate LinuxKernel
+LinuxKernel --> TimerMgr : timer deleted
+deactivate LinuxKernel
+
+TimerMgr -> TimerMgr : mTimers.erase(TimerId)
+
+TimerMgr -> TimerMgr : sTimerManagerMap.erase(TimerId)
+
+TimerMgr --> MainLoop : true (success)
+deactivate TimerMgr
+MainLoop --> Timer : success
+deactivate MainLoop
+Timer -> Timer : mCancelled = true
+deactivate Timer
+
+@enduml

@@ -1,7 +1,7 @@
 {
   "servers": {
     "lgedv": {
-      "command": "/Users/taikt/mcp_server/venv/bin/codeguard",
+      "command": "/home/worker/mcp_server/venv/bin/codeguard",
       "args": ["--transport", "stdio"],
       "env": {  
         "premium":"true",   

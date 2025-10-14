@@ -1,0 +1,3 @@
+# ./timer_load [one_shot_count] [periodic_count] [duration_seconds] [stress]
+
+10 one-shot timer, 5 periodic timer

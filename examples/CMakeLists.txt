@@ -65,8 +65,8 @@ if(NOT ENABLE_ALL_DEBUG AND NOT ENABLE_TIMER_DEBUG AND NOT ENABLE_SLLOOPER_DEBUG
     message(STATUS "Production build - no debug logging")
 endif()
 
-# add_executable(timer_load timer_load.cpp ${SW_TASK_SRC})
-# target_link_libraries(timer_load pthread)
+add_executable(timer_load timer_load.cpp ${SW_TASK_SRC})
+target_link_libraries(timer_load pthread)
 
 # add_executable(fetch_data fetch_data.cpp ${SW_TASK_SRC})
 # target_link_libraries(fetch_data pthread)
@@ -80,8 +80,8 @@ endif()
 # add_executable(fetch_data_OOP fetch_data_OOP.cpp ${SW_TASK_SRC})
 # target_link_libraries(fetch_data_OOP pthread)
 
-add_executable(timer timer.cpp ${SW_TASK_SRC})
-target_link_libraries(timer pthread)
+# add_executable(timer timer.cpp ${SW_TASK_SRC})
+# target_link_libraries(timer pthread)
 
 # add_executable(timer_bind timer_bind.cpp ${SW_TASK_SRC})
 # target_link_libraries(timer_bind pthread)

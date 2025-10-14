@@ -1,0 +1,138 @@
+@startuml
+'title "SW Task Framework - TimerManager TIMERFD_EPOLL Backend"
+
+autonumber
+
+participant "Client Application" as Client
+
+box "SW Task Framework" #LightBlue
+    participant "SLLooper\n(Event Loop Main thread)" as MainLoop
+    participant "Timer" as Timer
+    participant "TimerManager" as TimerMgr
+    participant "Timer Thread" as TimerThread
+    participant "EventQueue" as MQ
+end box
+
+participant "Linux Kernel" as LinuxKernel
+
+== Timer Creation (TIMERFD_EPOLL Backend) ==
+Client -> MainLoop : addTimer(callback, delay_ms)
+activate MainLoop
+note right of Client : Create timer with callback
+
+MainLoop -> MainLoop : initializeTimerManager()
+
+MainLoop -> TimerMgr : createTimerInternal(callback, delay_ms, false, &cancelled)
+activate TimerMgr
+
+TimerMgr -> TimerMgr : generate unique TimerId
+TimerMgr -> LinuxKernel : timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC)
+activate LinuxKernel
+note right of LinuxKernel : Create kernel timer fd
+LinuxKernel --> TimerMgr : return timer_fd
+
+TimerMgr -> LinuxKernel : timerfd_settime(timer_fd, itimerspec)
+note right of LinuxKernel : Configure timer delay/interval
+LinuxKernel --> TimerMgr : timer configured
+
+TimerMgr -> LinuxKernel : epoll_ctl(EPOLL_CTL_ADD, timer_fd, event)
+note right of LinuxKernel : Add to epoll instance\nevent.data.u64 = TimerId
+LinuxKernel --> TimerMgr : added to epoll
+deactivate LinuxKernel
+
+TimerMgr -> TimerMgr : mTimers[TimerId] = TimerInfo{fd, callback, periodic, cancelled}
+TimerMgr --> MainLoop : return TimerId
+deactivate TimerMgr
+
+MainLoop -> Timer : new Timer(TimerId, weak_ptr<SLLooper>)
+activate Timer
+MainLoop -> TimerMgr : updateCancelledPtr(TimerId, &timer.mCancelled)
+Timer --> Client : return Timer object
+deactivate Timer
+deactivate MainLoop
+
+== Timer Processing (Dedicated Timer Thread) ==
+loop Timer Thread Loop
+    TimerThread -> LinuxKernel : epoll_wait(events, MAX_EVENTS, 100ms)
+    activate TimerThread
+    activate LinuxKernel
+    note right of TimerThread : Single thread monitors\nall timers via epoll
+    
+    LinuxKernel --> TimerThread : return timer events[]
+    deactivate LinuxKernel
+    
+    loop For each timer event
+        TimerThread -> TimerThread : TimerId = event.data.u64
+        TimerThread -> TimerMgr : check mTimers[TimerId]
+        activate TimerMgr
+        
+        alt Timer exists and not cancelled
+            TimerMgr -> LinuxKernel : read(timer_fd, &expiration_count)
+            activate LinuxKernel
+            note right of LinuxKernel : Clear timer event\nGet expiration count
+            LinuxKernel --> TimerMgr : expiration_count
+            deactivate LinuxKernel
+            
+            TimerMgr -> MainLoop : post(callback) to main thread
+            activate MainLoop
+            MainLoop -> MQ : enqueueFunction(callback)
+            activate MQ
+            MQ --> MainLoop : callback scheduled
+            deactivate MQ
+            deactivate MainLoop
+            
+            alt One-shot timer
+                TimerMgr -> TimerMgr : cleanupTimer(TimerId)
+                TimerMgr -> LinuxKernel : epoll_ctl(EPOLL_CTL_DEL, timer_fd)
+                TimerMgr -> LinuxKernel : close(timer_fd)
+                TimerMgr -> TimerMgr : mTimers.erase(TimerId)
+            else Periodic timer
+                note right of TimerMgr : Keep timer active\nfor next period
+            end
+        else Timer cancelled
+            TimerMgr -> LinuxKernel : read(timer_fd) // clear event
+            TimerMgr -> TimerMgr : cleanupTimer(TimerId)
+        end
+        deactivate TimerMgr
+    end
+    deactivate TimerThread
+end
+
+== Callback Execution (Main Thread) ==
+MainLoop -> MQ : pollNext()
+activate MainLoop
+activate MQ
+MQ --> MainLoop : QueueItem (timer callback)
+deactivate MQ
+
+MainLoop -> Client : execute timer callback
+activate Client
+note right of Client : Callback executed\non main thread (thread-safe)
+Client --> MainLoop : callback complete
+deactivate Client
+deactivate MainLoop
+
+== Timer Cancellation ==
+Client -> Timer : cancel()
+activate Timer
+Timer -> MainLoop : cancelTimerInternal(TimerId)
+activate MainLoop
+MainLoop -> TimerMgr : cancelTimer(TimerId)
+activate TimerMgr
+
+TimerMgr -> LinuxKernel : epoll_ctl(EPOLL_CTL_DEL, timer_fd)
+activate LinuxKernel
+LinuxKernel --> TimerMgr : removed from epoll
+TimerMgr -> LinuxKernel : close(timer_fd)
+LinuxKernel --> TimerMgr : fd closed
+deactivate LinuxKernel
+
+TimerMgr -> TimerMgr : mTimers.erase(TimerId)
+TimerMgr --> MainLoop : true (success)
+deactivate TimerMgr
+MainLoop --> Timer : success
+deactivate MainLoop
+Timer -> Timer : mCancelled = true
+deactivate Timer
+
+@enduml
