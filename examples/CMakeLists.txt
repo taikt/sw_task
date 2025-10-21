@@ -65,8 +65,8 @@ if(NOT ENABLE_ALL_DEBUG AND NOT ENABLE_TIMER_DEBUG AND NOT ENABLE_SLLOOPER_DEBUG
     message(STATUS "Production build - no debug logging")
 endif()
 
-add_executable(timer_load timer_load.cpp ${SW_TASK_SRC})
-target_link_libraries(timer_load pthread)
+# add_executable(timer_load timer_load.cpp ${SW_TASK_SRC})
+# target_link_libraries(timer_load pthread)
 
 # add_executable(fetch_data fetch_data.cpp ${SW_TASK_SRC})
 # target_link_libraries(fetch_data pthread)
@@ -122,8 +122,11 @@ target_link_libraries(timer_load pthread)
 # add_executable(coawait_simple coawait_simple.cpp ${SW_TASK_SRC})
 # target_link_libraries(coawait_simple pthread)
 
-# if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-#     target_compile_options(co_await_example PRIVATE -fcoroutines -std=c++20)
-# elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-#     target_compile_options(co_await_example PRIVATE -fcoroutines-ts -std=c++20)
-# endif()
+add_executable(coawait_exception co_await/exception_simple.cpp ${SW_TASK_SRC})
+target_link_libraries(coawait_exception pthread)
+
+add_executable(co_exception_implicit co_await/exception_implicit.cpp ${SW_TASK_SRC})
+target_link_libraries(co_exception_implicit pthread)
+
+add_executable(oop_exception co_await/oop_exception.cpp ${SW_TASK_SRC})
+target_link_libraries(oop_exception pthread)

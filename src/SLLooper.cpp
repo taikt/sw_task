@@ -306,6 +306,7 @@ void PostAwaitable<T>::await_suspend(std::coroutine_handle<> handle) const noexc
     auto self = const_cast<PostAwaitable<T>*>(this);
     SLLOOPER_DEBUG("PostAwaitable: Posting to main thread");
     mLooper->post([self, handle]() {
+        
         try {
             auto result = self->getFunc()();
             self->setResult(result);

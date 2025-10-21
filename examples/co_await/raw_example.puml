@@ -1,0 +1,93 @@
+' - Coroutine frame: khối bộ nhớ (struct ẩn) do COMPILER tạo (layout, biến local, promise, state index, return slot...). 
+' Nó sống cho tới khi bạn gọi `handle.destroy()` (thường trong destructor của wrapper `Task`).
+' - `std::coroutine_handle<promise_type>`: chỉ là một “con trỏ nhẹ” (trivially copyable) 
+' do THƯ VIỆN CHUẨN định nghĩa (trong `<coroutine>`) để bạn và compiler thao tác lên frame.
+'  Nó KHÔNG “sinh” frame; nó chỉ trỏ vào frame mà compiler đã cấp phát.
+
+' Ai làm gì:
+' 1. Compiler: tạo frame + khởi tạo promise trong đó + gọi `initial_suspend()`.
+' 2. Bạn (trong `get_return_object`) gọi:  
+'    `std::coroutine_handle<promise_type>::from_promise(promise)` → nhận được handle (wrapper).
+' 3. Thư viện chuẩn: cung cấp kiểu `std::coroutine_handle<>` với hàm tĩnh `from_promise`, `resume()`, `done()`, `destroy()`.
+' 4. Hủy: Khi bạn gọi `handle.destroy()` (ví dụ trong destructor của `Task`), 
+' nó giải phóng frame (gọi destructor biến local + free vùng nhớ nếu heap).
+
+' Tóm tắt:
+' - Frame = dữ liệu thật, do compiler tạo + quản lý vòng đời gián tiếp.
+' - Handle = view/pointer an toàn (do std lib định nghĩa) tới frame.
+' - “Handle của frame” không phải là một tài nguyên khác; nó chỉ là cái tay nắm để điều khiển frame.
+
+' Mini minh họa vòng đời:
+
+' ```
+' call coroutine function
+'   -> compiler alloc frame
+'   -> construct promise
+'   -> call promise.get_return_object()  (bạn tạo wrapper)
+'       -> from_promise(promise) => handle
+' use handle.resume() ... 
+' final_suspend reached
+' destroy wrapper
+'   -> handle.destroy() => hủy frame
+' ```
+
+@startuml
+title raw_example.cpp - Coroutine Await Flow (annotated)
+
+autonumber
+
+participant "Main (thread)" as Main
+participant "compute() coroutine frame\n(promise + locals)" as Frame
+participant "AddAsync awaiter\n(AddAsync{2,3})" as Awaiter
+participant "WorkerThread" as Worker
+
+' Legend
+note left of Awaiter
+  Awaiter = đối tượng có
+  await_ready / await_suspend / await_resume
+end note
+note right of Frame
+  Continuation handle = handle của Frame
+  được compiler truyền vào Awaiter.await_suspend()
+end note
+
+== Start ==
+Main -> Frame : call compute()
+note right of Frame
+  initial_suspend = suspend_never
+  chạy tới dòng co_await
+end note
+
+== co_await AddAsync ==
+Frame -> Awaiter : create temporary AddAsync{2,3}
+Frame -> Awaiter : await_ready()?
+Awaiter --> Frame : false (not ready)
+Frame -> Awaiter : await_suspend(handle_of_Frame)
+note over Frame, Awaiter
+  Compiler gọi await_suspend()
+  Tham số: coroutine_handle của Frame (continuation handle)
+end note
+Awaiter -> Worker : spawn thread (detached)
+Frame <-- Awaiter : (suspended)
+
+== Async work ==
+Worker -> Worker : sleep 5000ms\nresult = 2+3
+Worker -> Frame : handle.resume()
+
+== Resume ==
+Frame -> Awaiter : await_resume() -> 5
+Frame -> Frame : co_return 50
+note over Frame
+  promise.return_value(50)
+  final_suspend = suspend_always (Frame còn sống)
+end note
+
+== Caller polls ==
+Main -> Frame : t.get() (poll loop)
+Frame --> Main : 50
+Main -> Main : print "Result = 50"
+
+== Cleanup ==
+Main -> Frame : destroy Task wrapper
+Frame -> Frame : frame destroy (handle.destroy())
+@enduml

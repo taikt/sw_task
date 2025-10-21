@@ -362,6 +362,182 @@ deactivate Client
 
 
 
+' “Coroutine core” (phần lõi coroutine) là KẾT HỢP giữa:
+
+' Ngôn ngữ (compiler) – cung cấp cú pháp và biến đổi (lowering).
+' Thư viện chuẩn <coroutine> – cung cấp các kiểu hỗ trợ (handle, suspend_*).
+' Code người dùng (promise_type, awaitable, wrapper) – bạn định nghĩa hành vi cụ thể.
+' Chi tiết tách lớp:
+
+' Compiler (ngôn ngữ C++):
+
+' Nhận diện từ khóa: co_await, co_return, co_yield.
+' Sinh ra coroutine frame (chứa locals, state index, promise instance).
+' Chèn gọi tuần tự: await_ready(), nếu false → await_suspend(handle), khi resume → await_resume().
+' Biến co_return expr; thành promise.return_value(expr) hoặc promise.return_void().
+' Biến ngoại lệ chưa bắt thành promise.unhandled_exception().
+' Gọi tự động initial_suspend() ngay khi tạo frame và final_suspend() trước hủy.
+' Tạo std::coroutine_handle<promise_type> từ promise (qua from_promise).
+' Thư viện chuẩn <coroutine>:
+
+' Định nghĩa các kiểu: std::coroutine_handle, std::suspend_always, std::suspend_never, std::noop_coroutine.
+' Cung cấp API kiểm soát vòng đời: handle.resume(), handle.done(), handle.destroy().
+' Không biến đổi logic async; chỉ là “phần cứng giao diện” để compiler và bạn tương tác.
+' Code người dùng / framework (như Task.h của bạn):
+
+' Khai báo promise_type (ví dụ TaskPromise<T>): quyết định initial/final suspend, lưu kết quả, continuations.
+' Khai báo wrapper Task<T>: tạo RAII, thêm multi-await, logic await_suspend cho chaining.
+' Viết awaitable (PostAwaitable, WorkAwaitable, DelayAwaitable): định nghĩa cách suspend và khi nào resume.
+' Quyết định dùng std::suspend_always hay std::suspend_never (chính sách lazy / eager).
+' Không thuộc coroutine core:
+
+' std::thread, TimerManager, EventQueue… chỉ là tầng thực thi bạn ghép vào.
+
+' Đúng, bước “Caller -> TaskW : await_suspend(caller_handle)” 
+' (và tương tự với PostA / WorkA / DelayA) trong sơ đồ là lời gọi do 
+' COMPILER tự sinh ra (implicit). Ứng dụng chỉ viết `co_await task;` 
+' hoặc `int v = co_await postAwaitable;` – bạn không tự gọi `await_suspend()` bằng tay.
+
+' Chi tiết cơ chế hạ (lowering):
+
+' 1. Bạn viết: `auto v = co_await X;`
+' 2. Compiler sinh mã tương đương (giả lập) kiểu:
+'    ```cpp
+'    auto&& awaiter = X;                     // hoặc X.operator co_await()
+'    if (!awaiter.await_ready()) {
+'        // Lấy coroutine_handle hiện tại (frame đang chạy)
+'        if (awaiter.await_suspend(std::coroutine_handle<promise_type>::from_promise(promise))) {
+'            // return/suspend ra ngoài (tùy kiểu trả về)
+'            return; // coroutine tạm dừng
+'        }
+'    }
+'    auto result = awaiter.await_resume();
+'    ```
+' 3. Nghĩa là:
+'    - `await_ready()` được compiler gọi trước.
+'    - Nếu trả `false` → compiler tạo handle rồi gọi `await_suspend(handle)`.
+'    - Khi coroutine được resume sau này → compiler gọi `await_resume()`.
+
+' Outer await vs Inner await trong sơ đồ:
+' - Outer await: Caller coroutine đang `co_await Task<T>` → compiler gọi `Task<T>::await_ready()` rồi `Task<T>::await_suspend()`.
+' - Inner await: Bên trong frame (Frame) gọi `co_await PostAwaitable` → compiler gọi chuỗi tương tự trên `PostAwaitable`.
+
+
+
+' Một vài lưu ý thêm:
+' - Tham số của `await_suspend` có thể là `std::coroutine_handle<>` hoặc `std::coroutine_handle<promise_type>`; compiler chọn đúng kiểu theo khai báo.
+' - Giá trị trả về của `await_suspend` (bool, void, hoặc coroutine_handle) quyết định thêm logic (ví dụ trả bool = tiếp tục suspend hay resume ngay).
+' - `initial_suspend()` và `final_suspend()` cũng do compiler gọi tương tự, dựa vào promise_type của bạn.
+
+
+@startuml
+title Full Async Flow (Task + Awaitables + Looper + TimerManager)
+
+autonumber
+
+box "Application" #White
+  participant "Caller Code" as Caller
+end box
+
+box "Coroutine Core" #LightBlue
+  participant "Task<T>\n(wrapper)" as TaskW
+  participant "Coroutine Frame\n(promise + locals)" as Frame
+end box
+
+box "Awaitables" #LightGray
+  participant "PostAwaitable<T>" as PostA
+  participant "WorkAwaitable<T>" as WorkA
+  participant "DelayAwaitable" as DelayA
+end box
+
+box "Execution Layer" #Azure
+  participant "SLLooper" as Looper
+  participant "EventQueue" as Queue
+  participant "TimerManager" as TimerMgr
+  participant "EventLoopThread" as LoopThread
+  participant "WorkerThread" as WorkerThread
+end box
+
+participant "TimerFD/Kernel" as Kernel
+
+== Create Task ==
+Caller -> Frame : call asyncFunc()
+note right of Frame : initial_suspend (suspend_always?)\nframe allocated
+Frame -> TaskW : get_return_object()
+TaskW --> Caller : Task<T>
+
+== Outer Await (if caller co_await Task) ==
+Caller -> TaskW : co_await Task<T>
+TaskW --> Caller : await_ready()? (may be false)
+Caller -> TaskW : await_suspend(caller_handle)
+TaskW -> Frame : resume to start running
+
+== Inside Coroutine Body ==
+Frame -> Looper : awaitPost(work) OR awaitWork(func) OR awaitDelay(ms)
+
+alt PostAwaitable
+  Looper -> PostA : construct
+  Frame -> PostA : co_await
+  PostA --> Frame : await_ready() = false
+  Frame -> PostA : await_suspend(frame_handle)
+  PostA -> Looper : post(lambda_wrapper)
+  Looper -> Queue : enqueue(lambda_wrapper)
+  Queue --> Looper : queued
+  deactivate Frame
+  Looper -> LoopThread : wake/process
+  LoopThread -> Queue : pollNext()
+  Queue --> LoopThread : lambda_wrapper
+  LoopThread -> PostA : execute lambda -> setResult(value)
+  PostA -> Frame : resume(frame_handle)
+  Frame -> PostA : await_resume() -> value
+end
+
+alt WorkAwaitable
+  Looper -> WorkA : construct
+  Frame -> WorkA : co_await
+  WorkA --> Frame : await_ready() = false
+  Frame -> WorkA : await_suspend(frame_handle)
+  WorkA -> WorkerThread : spawn (detached) doWork()
+  deactivate Frame
+  WorkerThread -> WorkA : setResult(value)
+  WorkA -> Frame : resume(frame_handle)
+  Frame -> WorkA : await_resume() -> value
+end
+
+alt DelayAwaitable
+  Looper -> DelayA : construct
+  Frame -> DelayA : co_await
+  DelayA --> Frame : await_ready() = false
+  Frame -> DelayA : await_suspend(frame_handle)
+  DelayA -> TimerMgr : schedule(timeout)
+  TimerMgr -> Kernel : arm timerfd
+  deactivate Frame
+  Kernel -> TimerMgr : expiry event
+  TimerMgr -> DelayA : notify ready
+  DelayA -> Frame : resume(frame_handle)
+  Frame -> DelayA : await_resume() (no value)
+end
+
+== Continue & Complete ==
+Frame -> Frame : process value(s)
+Frame -> Frame : co_return (value/void)
+note right of Frame : promise.return_value / return_void
+
+== Final Suspend ==
+Frame -> Frame : final_suspend()
+note right of Frame : continuation list resume
+Frame -> TaskW : (TaskPromise resumes waiting callers)
+TaskW -> Caller : continuation resumed
+
+== Caller retrieves result ==
+Caller -> TaskW : await_resume()/getResult()
+TaskW --> Caller : result
+
+== Cleanup ==
+Caller -> TaskW : destroy (RAII)
+TaskW -> Frame : frame destroy
+@enduml
+
 
 @startuml
 'title "SW Task Framework - Coroutines Feature Component & Connector View"
