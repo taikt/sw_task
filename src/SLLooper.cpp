@@ -19,7 +19,7 @@
  #include "TimerManager.h"
  #include "Timer.h"
  #include "Awaitable.h"
- 
+ #include <vector>
  using namespace std;
  
  namespace swt {
@@ -358,5 +358,6 @@ template class PostAwaitable<double>;
 template class PostAwaitable<bool>;
 template class PostAwaitable<long>;
 template class PostAwaitable<float>;
+template class PostAwaitable<std::vector<int>>;
 
 } // namespace swt

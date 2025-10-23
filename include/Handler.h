@@ -195,6 +195,7 @@ public:
      * @see \ref swt::Message "Message"
      */
     virtual void handleMessage(const std::shared_ptr<Message>& msg) = 0;
+    std::shared_ptr<SLLooper> getLooper() { return mLooper; }
 
 private:
     std::shared_ptr<EventQueue> mEventQueue;  /**< Associated event queue */

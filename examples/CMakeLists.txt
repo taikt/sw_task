@@ -122,11 +122,20 @@ endif()
 # add_executable(coawait_simple coawait_simple.cpp ${SW_TASK_SRC})
 # target_link_libraries(coawait_simple pthread)
 
-add_executable(coawait_exception co_await/exception_simple.cpp ${SW_TASK_SRC})
-target_link_libraries(coawait_exception pthread)
+# add_executable(coawait_exception co_await/exception_simple.cpp ${SW_TASK_SRC})
+# target_link_libraries(coawait_exception pthread)
 
-add_executable(co_exception_implicit co_await/exception_implicit.cpp ${SW_TASK_SRC})
-target_link_libraries(co_exception_implicit pthread)
+# add_executable(co_exception_implicit co_await/exception_implicit.cpp ${SW_TASK_SRC})
+# target_link_libraries(co_exception_implicit pthread)
 
-add_executable(oop_exception co_await/oop_exception.cpp ${SW_TASK_SRC})
-target_link_libraries(oop_exception pthread)
+# add_executable(oop_exception co_await/oop_exception.cpp ${SW_TASK_SRC})
+# target_link_libraries(oop_exception pthread)
+
+add_executable(pipeline_awaitpost userablity/pipeline_awaitpost.cpp ${SW_TASK_SRC})
+target_link_libraries(pipeline_awaitpost pthread)
+
+add_executable(pipeline_message userablity/pipeline_message.cpp ${SW_TASK_SRC})
+target_link_libraries(pipeline_message pthread)
+
+add_executable(pipeline_promise userablity/pipeline_promise.cpp ${SW_TASK_SRC})
+target_link_libraries(pipeline_promise pthread)
