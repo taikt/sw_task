@@ -60,10 +60,33 @@ else()
     endif()
 endif()
 
+# ================= HTTP SERVICE OPTIONS =================
+option(ENABLE_HTTP_SERVICE "Build standalone async HttpService using libcurl multi" ON)
+
+if(ENABLE_HTTP_SERVICE)
+    find_package(CURL REQUIRED)
+    # Thư viện HttpService
+    add_library(http_service
+        ../src/http/HttpService.cpp
+    )
+    target_include_directories(http_service PUBLIC ../include)
+    target_link_libraries(http_service PRIVATE CURL::libcurl pthread)
+    target_compile_definitions(http_service PRIVATE HTTP_SERVICE_VERBOSE=1)
+    # Ví dụ sử dụng (request.cpp)
+    add_executable(http_request http/request.cpp ${SW_TASK_SRC})
+    target_link_libraries(http_request PRIVATE http_service)
+
+    add_executable(multi_clients http/multi_clients.cpp ${SW_TASK_SRC})
+    target_link_libraries(multi_clients PRIVATE http_service)
+    
+endif()
+
 # Show what's enabled
 if(NOT ENABLE_ALL_DEBUG AND NOT ENABLE_TIMER_DEBUG AND NOT ENABLE_SLLOOPER_DEBUG AND NOT ENABLE_EventQueue_DEBUG)
     message(STATUS "Production build - no debug logging")
 endif()
+
+
 
 # add_executable(timer_load timer_load.cpp ${SW_TASK_SRC})
 # target_link_libraries(timer_load pthread)

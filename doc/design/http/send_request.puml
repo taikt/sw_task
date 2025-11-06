@@ -1,0 +1,66 @@
+@startuml
+autonumber
+title Async HTTP Request Sequence (With Remote Server Interaction)
+
+actor Client
+participant "HttpService" as HS
+participant "libcurl" as CURLM
+participant "Server" as SRV
+
+== Submit ==
+Client -> HS: submit(HttpRequest)
+HS --> Client: RequestId
+
+== Enqueue & Activate ==
+HS -> HS: addNewRequestsLocked()\n(move RequestCtx -> active)\nsetupEasy(ctx)
+HS -> CURLM: add_handle(easy)
+
+== Connect & TLS Handshake ==
+HS -> CURLM: performOnce()
+CURLM -> SRV: TCP Connect + TLS ClientHello
+SRV --> CURLM: TLS ServerHello + Cert + Finished
+CURLM --> HS: TLS established (ALPN h2/http1.1)
+
+== Send HTTP Request ==
+HS -> CURLM: curl_multi_perform()
+CURLM -> SRV: GET /path + headers
+
+== Poll Cycle ==
+loop until DONE
+  HS -> CURLM: curl_multi_timeout()
+  HS -> CURLM: curl_multi_wait()
+  HS -> CURLM: curl_multi_perform()
+
+  ' Server sends response headers
+  SRV --> CURLM: Response headers
+  CURLM --> HS: headerCallback(line)
+  HS -> HS: parse/record headers
+
+  ' Server sends body chunks
+  SRV --> CURLM: Body chunk (data)
+  CURLM --> HS: writeCallback(data)
+  HS -> HS: append to responseBody
+end loop
+
+== Completion ==
+CURLM -> HS: CURLMSG_DONE(result)
+HS -> HS: collectCompletions()
+HS -> HS: finishRequest(ctx,result)\n(build HttpResponse)
+
+alt success (2xx)
+  HS --> Client: onComplete(Response OK)
+else server error (HTTP 4xx/5xx)
+  HS --> Client: onComplete(Response errorCode)
+else SSL error (handshake / verify fail)
+  HS --> Client: onComplete(HttpError=SSL)
+else timeout (operation timed out)
+  HS --> Client: onComplete(HttpError=Timeout)
+else canceled (flag set)
+  HS --> Client: onComplete(HttpError=Canceled)
+end alt
+
+== Cleanup ==
+HS -> CURLM: remove_handle()
+HS -> HS: cleanupEasy(ctx)\nerase from active
+
+@enduml

@@ -59,10 +59,10 @@ int main() {
 
     asyncCall(looper, loadConfig)
     .then(looper, [looper](int factor) {
-        return fetchData(factor); // Trả về vector<int>
+        return fetchData(factor); 
     })
     .then(looper, [looper](std::vector<int> raw) {
-        int factor = 5; // Có thể giữ lại từ bước trước nếu cần (ở đây hardcode)
+        int factor = 5; 
         return transformData(raw, factor);
     })
     .then(looper, [looper](std::vector<int> transformed) {
@@ -74,7 +74,7 @@ int main() {
     .then(looper, [looper](bool saved) {
         std::cout << "[pipeline] saved=" << std::boolalpha << saved << "\n";
         looper->exit();
-        return saved; // có thể bỏ nếu không cần propagate
+        return saved; 
     })
     .catchError(looper, [looper](std::exception_ptr ex) {
         try {

@@ -1,0 +1,71 @@
+@startuml
+title HttpService Object-Centric Structure (Current Code)
+
+skinparam classAttributeIconSize 0
+skinparam classBackgroundColor #F4F9FF
+skinparam shadowing false
+
+class HttpRequest {
+  +method: HttpMethod
+  +url: string
+  +headers: vector<pair<string,string>>
+  +body: string
+  +timeoutMs: uint32
+  +onComplete(resp)
+  +onProgress(downloaded, total)
+}
+
+class HttpError {
+  +code: HttpErrorCode
+  +message: string
+}
+
+class HttpResponse {
+  +statusCode: long
+  +body: string
+  +effectiveUrl: string
+  +headers: unordered_map<string,string>
+  +error: optional<HttpError>
+  +elapsedMs: double
+  +ok(): bool
+}
+
+class RequestCtx {
+  +id: RequestId
+  +req: HttpRequest
+  +easy: CURL*
+  +canceled: bool
+  +responseBody: string
+  +respHeaders: unordered_map<string,string>
+  +startTime: time_point
+  +headerList: curl_slist*
+}
+
+class HttpService {
+  .. Public API ..
+  +submit(req: HttpRequest): RequestId
+  +cancel(id: RequestId): bool
+  +setMaxConcurrent(n: size_t)
+  +pending(): size_t
+  +activeCount(): size_t
+  +queuedCount(): size_t
+  +shutdown()
+
+  .. Internal Flow ..
+  -runLoop()
+  -addNewRequestsLocked()
+  -performOnce(waitMs: int)
+  -collectCompletions()
+  -finishRequest(ctx: RequestCtx, code: CURLcode)
+  -cleanupEasy(ctx: RequestCtx)
+  -setupEasy(ctx: RequestCtx)
+
+  .. libcurl Callbacks ..
+  -writeCallback(ptr, size, nmemb, userdata): size_t
+  -headerCallback(buffer, size, nitems, userdata): size_t
+}
+
+HttpService "1" o--> "many" RequestCtx : manages
+RequestCtx "1" o--> "1" HttpRequest : contains
+HttpResponse "1" o--> "0..1" HttpError : error
+@enduml
