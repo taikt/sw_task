@@ -427,8 +427,8 @@ int main() {
 ### Build Instructions
 
 ```bash
-git clone https://github.com/taikt/sw_task.git
-cd sw_task
+git clone https://github.com/taikt/cpp_taskflow.git
+cd cpp_taskflow
 mkdir build && cd build
 cmake -DCMAKE_CXX_STANDARD=20 ..
 make -j$(nproc)
@@ -511,5 +511,5 @@ SOFTWARE.
 
 **Author**: Tran Anh Tai  
 **Email**: tai2.tran@lge.com (taitrananhvn@gmail.com)  
-**Repository**: [https://github.com/taikt/sw_task](https://github.com/taikt/sw_task)  
-**Documentation**: [https://taikt.github.io/sw_task/](https://taikt.github.io/sw_task/)
+**Repository**: [https://github.com/taikt/cpp_taskflow](https://github.com/taikt/cpp_taskflow)  
+**Documentation**: [https://taikt.github.io/cpp_taskflow/](https://taikt.github.io/cpp_taskflow/)

@@ -35,7 +35,7 @@ Event loop frameworks provide the foundation for **asynchronous, event-driven ap
 
 ### Framework Comparison
 
-**SW Task Framework**: Modern C++ multi-thread architecture with advanced resource management  
+**CppTaskflow**: Modern C++ multi-thread architecture with advanced resource management  
 **Tiger Looper Framework**: Traditional single-thread Android-style pattern with POSIX timers
 
 **Target Applications**: Automotive telematics and embedded systems
@@ -232,7 +232,7 @@ Event loop frameworks provide the foundation for **asynchronous, event-driven ap
 <!-- Slide 9 -->
 ## 5. Recommendations
 
-### **Primary Recommendation: Adopt SW Task Framework**
+### **Primary Recommendation: Adopt CppTaskflow**
 
 **Implementation Strategy:**
 
@@ -260,7 +260,7 @@ Event loop frameworks provide the foundation for **asynchronous, event-driven ap
 4. **Reusability**: Backward compatible enhancement (**zero breaking changes**)
 
 ### Next Steps
-1. Approve SW Task framework adoption
+1. Approve CppTaskflow adoption
 2. Begin implementation planning
 3. Start developer training
 4. Establish monitoring
@@ -269,4 +269,4 @@ Event loop frameworks provide the foundation for **asynchronous, event-driven ap
 
 ---
 
-*SW Task Framework delivers superior performance, efficiency, usability, and reusability compared to Tiger Looper with proven 98%+ improvements across key metrics.*
+*CppTaskflow delivers superior performance, efficiency, usability, and reusability compared to Tiger Looper with proven 98%+ improvements across key metrics.*

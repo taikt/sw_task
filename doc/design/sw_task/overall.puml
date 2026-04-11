@@ -6,7 +6,7 @@
 rectangle "Client Application" as Client 
 rectangle "epoll + timerfd" as EpollFd <<Linux Kernel>>
 
-package "SW Task Framework" #LightYellow {
+package "CppTaskflow" #LightYellow {
     
     package "Main Thread Event Loop" {
         rectangle "SLLooper" as Looper
@@ -90,7 +90,7 @@ DelayAwaitable ..> TimerMgr : uses
 COMPONENT [Client Application] as Client 
 ' COMPONENT [epoll + timerfd] as EpollFd <<Linux Kernel>>
 
-package "SW Task Framework" #LightBlue {
+package "CppTaskflow" #LightBlue {
     
     package "Main Thread Event Loop" {
         COMPONENT [SLLooper] as Looper <<Facade>>

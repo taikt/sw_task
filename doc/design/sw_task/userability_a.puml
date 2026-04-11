@@ -9,7 +9,7 @@ rectangle "Android Style Use" as AndroidDev <<External>>
 rectangle "Modern C++ Style Use" as CppDev <<External>>  
 rectangle "Async JavaScript Style Use" as AsyncDev <<External>>
 
-package "SW Task Framework" #LightYellow {
+package "CppTaskflow" #LightYellow {
     
     package "Facade Layer" #Pink {
         rectangle "SLLooper" as SLLooper

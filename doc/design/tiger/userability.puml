@@ -134,7 +134,7 @@ package "Tiger Looper Framework" #FFE4E1 {
     end note
 }
 
-package "SW Task Framework" #E1F5FE {
+package "CppTaskflow" #E1F5FE {
     rectangle "Dual Type Event Loop" as SWLoop {
         rectangle "SLLooper\n(Message + Functor)" as SWSLLooper
         rectangle "EventQueue\n[QueueItem, QueueItem, QueueItem...]" as SWQueue

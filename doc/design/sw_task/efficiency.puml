@@ -5,13 +5,13 @@
 
 
 @startuml
-'title "SW Task Framework - Timer Creation Flow (O(1) Operation)"
+'title "CppTaskflow - Timer Creation Flow (O(1) Operation)"
 
 autonumber
 
 participant "Client Application" as Client
 
-box "SW Task Framework" #LightBlue
+box "CppTaskflow" #LightBlue
     participant "SLLooper\n(Event Loop Main thread)" as MainLoop
     participant "Timer" as Timer
     participant "TimerManager" as TimerMgr
@@ -61,13 +61,13 @@ deactivate MainLoop
 
 
 @startuml
-'title "SW Task Framework - Timer Thread Processing (1 Thread Handles Many Timers)"
+'title "CppTaskflow - Timer Thread Processing (1 Thread Handles Many Timers)"
 
 autonumber
 
 participant "Client Application" as Client
 
-box "SW Task Framework" #LightBlue
+box "CppTaskflow" #LightBlue
     participant "SLLooper\n(Event Loop Main thread)" as MainLoop
     participant "EventQueue" as MQ
     participant "TimerManager" as TimerMgr
@@ -146,7 +146,7 @@ deactivate MainLoop
 rectangle "Client Application" as Client
 rectangle "epoll + timerfd" as EpollFd <<Linux Kernel>>
 
-package "SW Task Framework" #LightBlue {
+package "CppTaskflow" #LightBlue {
     
     package "Main Thread Event Loop" {
         rectangle "SLLooper" as Looper
@@ -189,11 +189,11 @@ TimerThread ..> EpollFd : uses
 
 
 @startuml
-'title "SW Task Framework - Timer Management Flow"
+'title "CppTaskflow - Timer Management Flow"
 
 rectangle "Client\nApplication" as Client
 
-package "SW Task Framework" #LightBlue {
+package "CppTaskflow" #LightBlue {
     
     package "Main Thread" {
         rectangle "SLLooper" as Looper

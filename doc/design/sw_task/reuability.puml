@@ -1,12 +1,12 @@
 @startuml
-title "SW Task Framework - Backward Compatible: Message API + Function API"
+title "CppTaskflow - Backward Compatible: Message API + Function API"
 
 autonumber
 
 participant "Legacy Tiger App" as LegacyApp
 participant "Modern C++ App" as ModernApp
 
-box "SW Task Framework (Backward Compatible)" #LightBlue
+box "CppTaskflow (Backward Compatible)" #LightBlue
     participant "Handler\n(Legacy Preserved)" as Handler
     participant "SLLooper\n(Enhanced)" as SLLooper
     participant "EventQueue\n(Unified)" as MQ
@@ -74,7 +74,7 @@ note over Handler, SLLooper : Binary compatibility maintained\nLegacy and modern
 
 
 @startuml
-'title "SW Task Framework - Component & Connector View (Backward Compatible Design)"
+'title "CppTaskflow - Component & Connector View (Backward Compatible Design)"
 
 !define COMPONENT_COLOR #E6F3FF
 !define CONNECTOR_COLOR #FFE6E6
@@ -85,7 +85,7 @@ package "Client Applications" as ClientApps {
     component [Modern C++ Application] as ModernApp COMPONENT_COLOR
 }
 
-package "SW Task Framework" as Framework {
+package "CppTaskflow" as Framework {
     
     package "API Layer" as APILayer {
         interface "Message API" as MessageAPI INTERFACE_COLOR

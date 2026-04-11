@@ -1,9 +1,9 @@
 @startuml
-'title "SW Task Framework - postWork() for Heavy Tasks (Worker Thread)"
+'title "CppTaskflow - postWork() for Heavy Tasks (Worker Thread)"
 
 rectangle "Client\nApplication" as Client
 
-package "SW Task Framework" #LightBlue {
+package "CppTaskflow" #LightBlue {
     
     package "Main Thread" {
         rectangle "SLLooper\n(Main Thread Event Loop)" as Looper

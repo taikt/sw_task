@@ -5,7 +5,7 @@
 
 rectangle "Client Application" as Client
 
-package "SW Task Framework" #LightBlue {
+package "CppTaskflow" #LightBlue {
     
     package "Async Helper" #Pink {
         
@@ -68,13 +68,13 @@ PostAwaitableVoid ..> PostAwaitable : uses
 
 
 @startuml
-'title "SW Task Framework - Promise Creation & Chaining Setup"
+'title "CppTaskflow - Promise Creation & Chaining Setup"
 
 autonumber
 
 participant "Client Application" as Client
 
-box "SW Task Framework" #LightBlue
+box "CppTaskflow" #LightBlue
     participant "SLLooper\n(Event Loop)" as Looper
     participant "EventQueue" as MQ
     participant "Promise<T>" as Promise
@@ -131,13 +131,13 @@ note over Client, State : Promise chain is now configured\nand ready for async e
 
 
 @startuml
-'title "SW Task Framework - Async Execution & Event Loop Processing"
+'title "CppTaskflow - Async Execution & Event Loop Processing"
 
 autonumber
 
 participant "Client Application" as Client
 
-box "SW Task Framework" #LightBlue
+box "CppTaskflow" #LightBlue
     participant "SLLooper\n(Event Loop)" as Looper
     participant "EventQueue" as MQ
     participant "Promise<T>" as Promise
@@ -190,11 +190,11 @@ note over Promise : Promise chain continues\nwith next then() or catch_error()
 
 
 @startuml
-'title "SW Task Framework - Promise Creation and Execution Flow"
+'title "CppTaskflow - Promise Creation and Execution Flow"
 
 rectangle "Client\nApplication" as Client
 
-package "SW Task Framework" #LightBlue {
+package "CppTaskflow" #LightBlue {
     
     package "Main Thread" {
         rectangle "SLLooper" as Looper
@@ -230,11 +230,11 @@ State --> Client : "12: invoke callbacks"
 
 
 @startuml
-'title "SW Task Framework - co_await Creation and Execution Flow"
+'title "CppTaskflow - co_await Creation and Execution Flow"
 
 rectangle "ClientApplication" as Client
 
-package "SW Task Framework" #LightBlue {
+package "CppTaskflow" #LightBlue {
     
     package "Main Thread" {
         rectangle "SLLooper" as Looper
@@ -278,13 +278,13 @@ Awaitable --> Client : "18: return result"
 
 
 @startuml
-'title "SW Task Framework - co_await Execution Flow (coawait_simple.cpp)"
+'title "CppTaskflow - co_await Execution Flow (coawait_simple.cpp)"
 
 autonumber
 
 participant "Client Application" as Client
 
-box "SW Task Framework" #LightBlue
+box "CppTaskflow" #LightBlue
     participant "SLLooper" as Looper
     participant "EventQueue" as MQ
     participant "PostAwaitable" as Awaitable
@@ -540,7 +540,7 @@ TaskW -> Frame : frame destroy
 
 
 @startuml
-'title "SW Task Framework - Coroutines Feature Component & Connector View"
+'title "CppTaskflow - Coroutines Feature Component & Connector View"
 
 !define COMPONENT_COLOR #E6F3FF
 !define CONNECTOR_COLOR #FFE6E6
@@ -550,7 +550,7 @@ TaskW -> Frame : frame destroy
     component [Client Application] as CoroutineApp COMPONENT_COLOR
 '}
 
-package "SW Task Framework" as Framework #LightBlue {
+package "CppTaskflow" as Framework #LightBlue {
     
     package "Coroutine API Layer" as APILayer {
         interface "co_await API" as CoAwaitAPI INTERFACE_COLOR

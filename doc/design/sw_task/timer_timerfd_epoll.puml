@@ -1,11 +1,11 @@
 @startuml
-'title "SW Task Framework - TimerManager TIMERFD_EPOLL Backend"
+'title "CppTaskflow - TimerManager TIMERFD_EPOLL Backend"
 
 autonumber
 
 participant "Client Application" as Client
 
-box "SW Task Framework" #LightBlue
+box "CppTaskflow" #LightBlue
     participant "SLLooper\n(Event Loop Main thread)" as MainLoop
     participant "Timer" as Timer
     participant "TimerManager" as TimerMgr

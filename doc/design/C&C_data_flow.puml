@@ -5,7 +5,7 @@
 COMPONENT [Client Application] as Client 
 ' COMPONENT [epoll + timerfd] as EpollFd <<Linux Kernel>>
 
-package "SW Task Framework" #LightBlue {
+package "CppTaskflow" #LightBlue {
     
     package "Main Thread Event Loop" {
         COMPONENT [SLLooper] as Looper <<Facade>>

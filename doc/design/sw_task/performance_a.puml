@@ -1,10 +1,10 @@
 
 @startuml
-'title "SW Task Framework - post() for Normal Tasks (Main Thread)"
+'title "CppTaskflow - post() for Normal Tasks (Main Thread)"
 
 rectangle "Client\nApplication" as Client
 
-package "SW Task Framework" #LightBlue {
+package "CppTaskflow" #LightBlue {
     
     package "Main Thread" {
         rectangle "SLLooper\n(Main Thread Event Loop)" as Looper
@@ -23,11 +23,11 @@ Looper --> Client : "4: execute lambda callback"
 
 
 @startuml
-'title "SW Task Framework - postWork() for Heavy Tasks (Worker Thread)"
+'title "CppTaskflow - postWork() for Heavy Tasks (Worker Thread)"
 
 rectangle "Client\nApplication" as Client
 
-package "SW Task Framework" #LightBlue {
+package "CppTaskflow" #LightBlue {
     
     package "Main Thread" {
         rectangle "SLLooper\n(Main Thread Event Loop)" as Looper
@@ -58,11 +58,11 @@ Looper --> Client : "8: invoke callback"
 
 
 @startuml
-'title "SW Task Framework - postWork() Sequence Diagram"
+'title "CppTaskflow - postWork() Sequence Diagram"
 autonumber
 participant "Client" as Client
 
-box "SW Task Framework" #LightBlue
+box "CppTaskflow" #LightBlue
     participant "SLLooper\n(Main Thread)" as Looper
     participant "CPU-bound Task Thread" as CPUThread
 end box
@@ -100,11 +100,11 @@ note over Client, CPUThread : Main event loop thread never blocks,\nHeavy work i
 
 
 @startuml
-'title "SW Task Framework - post() Sequence Diagram"
+'title "CppTaskflow - post() Sequence Diagram"
 autonumber
 participant "Client" as Client
 
-box "SW Task Framework" #LightBlue
+box "CppTaskflow" #LightBlue
     participant "SLLooper\n(Main Thread)" as Looper
     participant "EventQueue" as MQ
 end box
@@ -153,13 +153,13 @@ deactivate Looper
 
 
 @startuml
-'title "SW Task Framework - postWork() for CPU Heavy Computations (Isolated Worker Thread)"
+'title "CppTaskflow - postWork() for CPU Heavy Computations (Isolated Worker Thread)"
 
 autonumber
 
 participant "Client Application" as Client
 
-box "SW Task Framework" #LightBlue
+box "CppTaskflow" #LightBlue
     participant "SLLooper\n(Event Loop)" as Looper
     participant "Promise<T>" as Promise
     participant "State<T>" as State

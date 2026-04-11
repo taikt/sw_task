@@ -77,7 +77,7 @@ package "Tiger Looper framework" #LightYellow {
     }
 }
 
-package "SW Task Framework" #LightBlue {
+package "CppTaskflow" #LightBlue {
     rectangle "TimerManager" as SWTM
     rectangle "epoll + timerfd\n(Single Thread)" as SWEpoll
     
