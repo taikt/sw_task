@@ -1,4 +1,4 @@
-# CppTaskFlow Framework
+# Executor Framework
 
 [![Build Status](https://github.com/taikt/sw_task/actions/workflows/build.yml/badge.svg)](https://github.com/taikt/sw_task/actions/workflows/build.yml)
 [![Documentation](https://github.com/taikt/sw_task/actions/workflows/docs.yml/badge.svg)](https://taikt.github.io/sw_task/)
